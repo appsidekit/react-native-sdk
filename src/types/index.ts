@@ -14,12 +14,6 @@ export interface ConfigOptions {
    * @default false
    */
   readonly verbose?: boolean;
-
-  /**
-   * Current app version (required)
-   * Should match the version in your app's package.json or info.plist
-   */
-  readonly appVersion?: string;
 }
 
 /**

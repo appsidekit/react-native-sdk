@@ -34,6 +34,12 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   clear: jest.fn(() => Promise.resolve()),
 }));
 
+// Mock DeviceInfo
+jest.mock('react-native-device-info', () => ({
+  getVersion: jest.fn(() => '1.0.0'),
+  getModel: jest.fn(() => 'iPhone 15'),
+}));
+
 // Mock fetch
 global.fetch = jest.fn();
 

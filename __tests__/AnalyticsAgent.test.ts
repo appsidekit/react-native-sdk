@@ -9,7 +9,7 @@ describe('AnalyticsAgent', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    agent = new AnalyticsAgent('test-api-key', '1.0.0');
+    agent = new AnalyticsAgent('test-api-key');
   });
 
   describe('getGateInformation', () => {
@@ -129,7 +129,7 @@ describe('AnalyticsAgent', () => {
       const body = JSON.parse(callArgs[1].body);
 
       expect(body).toHaveProperty('osVersion');
-      expect(body).toHaveProperty('appVersion', '1.0.0');
+      expect(body).toHaveProperty('appVersion');
       expect(body).toHaveProperty('country');
       expect(body).toHaveProperty('language');
       expect(body).toHaveProperty('platform');

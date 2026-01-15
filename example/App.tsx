@@ -24,7 +24,6 @@ export default function App() {
   const initializeSDK = async () => {
     try {
       await SideKit.shared.configure(apiKey, {
-        appVersion: '1.0.0',
         verbose: true,
         presentationMode: 'automatic',
       });

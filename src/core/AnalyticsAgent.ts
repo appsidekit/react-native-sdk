@@ -8,6 +8,7 @@ import { GateInformation } from '../models/GateInformation';
 import { SignalPayload } from '../models/Signal';
 import { log, error } from '../utils/logger';
 import {
+  getAppVersion,
   getPlatform,
   getOSVersion,
   getDeviceModel,
@@ -25,11 +26,9 @@ const API_SIGNALS_ENDPOINT = '/v1';
  */
 export class AnalyticsAgent {
   private apiKey: string;
-  private appVersion: string;
 
-  constructor(apiKey: string, appVersion: string) {
+  constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.appVersion = appVersion;
   }
 
   /**
@@ -74,7 +73,7 @@ export class AnalyticsAgent {
       // Collect metadata
       const metadata = {
         osVersion: getOSVersion(),
-        appVersion: this.appVersion,
+        appVersion: getAppVersion(),
         country: getCountryCode(),
         language: getLanguageCode(),
         platform: getPlatform(),

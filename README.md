@@ -35,7 +35,6 @@ import SideKit from '@sidekit/react-native';
 
 // Configure SDK at app startup
 await SideKit.shared.configure('your-api-key', {
-  appVersion: '1.0.0',
   verbose: __DEV__,
   presentationMode: 'automatic', // or 'manual'
 });
@@ -113,14 +112,12 @@ Initialize the SDK with your API key and configuration options.
 **Parameters:**
 - `apiKey` (string, required): Your SideKit API key
 - `options` (object, optional):
-  - `appVersion` (string, required): Current app version (e.g., "1.0.0")
   - `verbose` (boolean): Enable debug logging (default: false)
   - `presentationMode` ('automatic' | 'manual'): How to present update gates (default: 'automatic')
 
 **Example:**
 ```typescript
 await SideKit.shared.configure('sk_abc123', {
-  appVersion: '1.0.0',
   verbose: true,
   presentationMode: 'automatic',
 });
@@ -283,7 +280,6 @@ For custom UI, use manual presentation mode:
 
 ```typescript
 await SideKit.shared.configure('your-api-key', {
-  appVersion: '1.0.0',
   presentationMode: 'manual',
 });
 
@@ -340,9 +336,7 @@ jest.mock('@sidekit/react-native', () => ({
 Ensure you're calling `configure()` before any other SDK methods:
 
 ```typescript
-await SideKit.shared.configure('your-api-key', {
-  appVersion: '1.0.0',
-});
+await SideKit.shared.configure('your-api-key');
 ```
 
 ### Version gate not showing

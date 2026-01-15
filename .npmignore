@@ -19,9 +19,8 @@ tsconfig.build.json
 # Example app
 example/
 
-# Plan and QA reports
+# Plan
 plan/
-QA_REPORT.md
 
 # Development
 .github/

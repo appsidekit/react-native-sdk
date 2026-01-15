@@ -23,7 +23,6 @@ describe('SideKit', () => {
   describe('configure', () => {
     it('should configure SDK successfully', async () => {
       await sideKit.configure('test-api-key', {
-        appVersion: '1.0.0',
         verbose: true,
       });
 
@@ -33,24 +32,18 @@ describe('SideKit', () => {
 
     it('should throw error if API key is missing', async () => {
       await expect(
-        sideKit.configure('', { appVersion: '1.0.0' })
+        sideKit.configure('')
       ).rejects.toThrow('API key is required');
     });
 
-    it('should throw error if app version is missing', async () => {
-      await expect(sideKit.configure('test-api-key')).rejects.toThrow(
-        'appVersion is required'
-      );
-    });
-
     it('should initialize SettingsStore', async () => {
-      await sideKit.configure('test-api-key', { appVersion: '1.0.0' });
+      await sideKit.configure('test-api-key');
       expect(SettingsStore).toHaveBeenCalled();
     });
 
     it('should initialize AnalyticsAgent with API key', async () => {
-      await sideKit.configure('test-api-key', { appVersion: '1.0.0' });
-      expect(AnalyticsAgent).toHaveBeenCalledWith('test-api-key', '1.0.0');
+      await sideKit.configure('test-api-key');
+      expect(AnalyticsAgent).toHaveBeenCalledWith('test-api-key');
     });
 
     it('should check for first launch', async () => {
@@ -76,7 +69,7 @@ describe('SideKit', () => {
         () => mockAnalyticsAgent
       );
 
-      await sideKit.configure('test-api-key', { appVersion: '1.0.0' });
+      await sideKit.configure('test-api-key');
 
       expect(mockSettingsStore.isFirstLaunch).toHaveBeenCalled();
       expect(mockSettingsStore.markLaunched).toHaveBeenCalled();
@@ -106,7 +99,7 @@ describe('SideKit', () => {
         () => mockAnalyticsAgent
       );
 
-      await sideKit.configure('test-api-key', { appVersion: '1.0.0' });
+      await sideKit.configure('test-api-key');
     });
 
     it('should send signal with key only', () => {
@@ -176,7 +169,7 @@ describe('SideKit', () => {
         () => mockAnalyticsAgent
       );
 
-      await sideKit.configure('test-api-key', { appVersion: '1.0.0' });
+      await sideKit.configure('test-api-key');
     });
 
     it('should get analytics enabled state', () => {
@@ -216,7 +209,7 @@ describe('SideKit', () => {
         () => mockAnalyticsAgent
       );
 
-      await sideKit.configure('test-api-key', { appVersion: '1.0.0' });
+      await sideKit.configure('test-api-key');
 
       const unsubscribe = sideKit.subscribe(listener);
 
@@ -265,7 +258,7 @@ describe('SideKit', () => {
         () => mockAnalyticsAgent
       );
 
-      await sideKit.configure('test-api-key', { appVersion: '1.0.0' });
+      await sideKit.configure('test-api-key');
 
       // Wait for version check
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -301,7 +294,7 @@ describe('SideKit', () => {
         () => mockAnalyticsAgent
       );
 
-      await sideKit.configure('test-api-key', { appVersion: '2.0.0' });
+      await sideKit.configure('test-api-key');
 
       // Wait for version check
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -339,7 +332,7 @@ describe('SideKit', () => {
         () => mockAnalyticsAgent
       );
 
-      await sideKit.configure('test-api-key', { appVersion: '1.0.0' });
+      await sideKit.configure('test-api-key');
 
       // Wait for version check
       await new Promise((resolve) => setTimeout(resolve, 10));

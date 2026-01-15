@@ -19,7 +19,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSideKit } from '../index';
-import { openURL, getStoreURL } from '../utils/platform';
+import { openURL, getStoreURL, getAppVersion } from '../utils/platform';
 import { SideKit } from '../core/SideKit';
 import { SemanticVersion } from '../models/SemanticVersion';
 import { GateInformation } from '../models/GateInformation';
@@ -121,7 +121,7 @@ export function DefaultVersionGate({
     dismissable !== undefined
       ? dismissable
       : (gateInformation as GateInformation).isDismissable(
-          new SemanticVersion(SideKit.shared['appVersion'] || '1.0.0')
+          new SemanticVersion(getAppVersion())
         );
 
   const handleUpdate = async () => {

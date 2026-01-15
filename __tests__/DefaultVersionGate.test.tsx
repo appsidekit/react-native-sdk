@@ -1,6 +1,5 @@
 import React from 'react';
 import { DefaultVersionGate } from '../src/components/DefaultVersionGate';
-import { SideKit } from '../src/core/SideKit';
 import { GateInformation } from '../src/models/GateInformation';
 import { VersionGateType } from '../src/types';
 
@@ -14,6 +13,7 @@ jest.mock('../src/index', () => ({
 jest.mock('../src/utils/platform', () => ({
   openURL: jest.fn(() => Promise.resolve(true)),
   getStoreURL: jest.fn((ios, android) => ios || android),
+  getAppVersion: jest.fn(() => '1.0.0'),
 }));
 
 describe('DefaultVersionGate', () => {
@@ -66,9 +66,6 @@ describe('DefaultVersionGate', () => {
       isAnalyticsEnabled: true,
     });
 
-    // Set appVersion for the component to use
-    (SideKit.shared as any).appVersion = '1.0.0';
-
     const result = DefaultVersionGate({});
     expect(result).not.toBeNull();
     expect(React.isValidElement(result)).toBe(true);
@@ -90,8 +87,6 @@ describe('DefaultVersionGate', () => {
       isAnalyticsEnabled: true,
     });
 
-    (SideKit.shared as any).appVersion = '1.0.0';
-
     const result = DefaultVersionGate({ dismissable: true });
     expect(result).not.toBeNull();
     expect(React.isValidElement(result)).toBe(true);
@@ -111,8 +106,6 @@ describe('DefaultVersionGate', () => {
       gateInformation: gateInfo,
       isAnalyticsEnabled: true,
     });
-
-    (SideKit.shared as any).appVersion = '1.0.0';
 
     const result = DefaultVersionGate({ dismissable: true, onSkip });
 

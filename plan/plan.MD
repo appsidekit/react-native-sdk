@@ -1066,7 +1066,6 @@ export default function App() {
 
   const initializeSDK = async () => {
     await SideKit.shared.configure('your-api-key', {
-      appVersion: '1.0.0',
       verbose: true,
     });
     setConfigured(true);

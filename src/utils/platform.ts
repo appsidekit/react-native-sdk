@@ -3,6 +3,15 @@
  */
 
 import { Platform, Linking } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
+
+/**
+ * Get the current app version
+ * @returns App version string
+ */
+export function getAppVersion(): string {
+  return DeviceInfo.getVersion();
+}
 
 /**
  * Get current platform
@@ -26,20 +35,7 @@ export function getOSVersion(): string {
  * @returns Device model string
  */
 export function getDeviceModel(): string {
-  const platform = getPlatform();
-
-  if (platform === 'ios') {
-    // On iOS, we can check if it's a tablet
-    // In a real implementation, you might use react-native-device-info
-    // For now, we'll just return the platform
-    return 'iPhone'; // Could be enhanced with tablet detection
-  }
-
-  if (platform === 'android') {
-    return 'Android';
-  }
-
-  return 'unknown';
+  return DeviceInfo.getModel();
 }
 
 /**

@@ -10,6 +10,7 @@ import { GateInformation } from '../models/GateInformation';
 import { SemanticVersion } from '../models/SemanticVersion';
 import { Signal } from '../models/Signal';
 import { subscribeToLifecycle } from '../utils/lifecycle';
+import { getAppVersion } from '../utils/platform';
 import { log, error, setVerbose } from '../utils/logger';
 import type { ConfigOptions } from '../types';
 
@@ -20,7 +21,6 @@ export class SideKit {
   private static instance: SideKit;
 
   // Configuration
-  private appVersion?: string;
   private isConfigured = false;
 
   // Dependencies
@@ -71,12 +71,10 @@ export class SideKit {
    *
    * @param {string} apiKey - Your SideKit API key (required)
    * @param {ConfigOptions} [options] - Configuration options
-   * @param {string} options.appVersion - Current app version (e.g., "1.0.0") - REQUIRED
    * @param {boolean} [options.verbose=false] - Enable debug logging
    * @param {'automatic' | 'manual'} [options.presentationMode='automatic'] - How to present update gates
    *
    * @throws {Error} If API key is missing or empty
-   * @throws {Error} If appVersion is missing or empty
    *
    * @returns {Promise<void>}
    *
@@ -85,13 +83,10 @@ export class SideKit {
    * import SideKit from '@sidekit/react-native';
    *
    * // Basic configuration
-   * await SideKit.shared.configure('sk_your_api_key', {
-   *   appVersion: '1.0.0',
-   * });
+   * await SideKit.shared.configure('sk_your_api_key');
    *
    * // With verbose logging
    * await SideKit.shared.configure('sk_your_api_key', {
-   *   appVersion: '1.0.0',
    *   verbose: __DEV__,
    *   presentationMode: 'automatic',
    * });
@@ -108,24 +103,16 @@ export class SideKit {
       throw new Error('API key is required');
     }
 
-    // Validate app version
-    if (!options?.appVersion || options.appVersion.trim().length === 0) {
-      throw new Error('appVersion is required in configuration options');
-    }
-
-    // Store configuration
-    this.appVersion = options.appVersion;
-
     // Set verbose logging
-    if (options.verbose !== undefined) {
+    if (options?.verbose !== undefined) {
       setVerbose(options.verbose);
     }
 
-    log(`Configuring SideKit SDK v${this.appVersion}`);
+    log(`Configuring SideKit SDK`);
 
     // Initialize dependencies
     this.settingsStore = new SettingsStore();
-    this.analyticsAgent = new AnalyticsAgent(apiKey, this.appVersion);
+    this.analyticsAgent = new AnalyticsAgent(apiKey);
 
     // Load analytics enabled state
     this._isAnalyticsEnabled = await this.settingsStore.isAnalyticsEnabled();
@@ -340,7 +327,7 @@ export class SideKit {
    * Check version compliance
    */
   private async checkVersionCompliance(): Promise<void> {
-    if (!this.appVersion || !this.analyticsAgent || !this.settingsStore) {
+    if (!this.analyticsAgent || !this.settingsStore) {
       return;
     }
 
@@ -356,9 +343,9 @@ export class SideKit {
     // Parse current version
     let currentVersion: SemanticVersion;
     try {
-      currentVersion = new SemanticVersion(this.appVersion);
+      currentVersion = new SemanticVersion(getAppVersion());
     } catch (err) {
-      error(`Invalid app version format: ${this.appVersion}`, err);
+      error(`Invalid app version format: ${getAppVersion()}`, err);
       return;
     }
 
@@ -410,7 +397,7 @@ export class SideKit {
     this.notifyListeners();
 
     // Send _gate_enforced signal
-    this.sendSignal('_gate_enforced', this.appVersion);
+    this.sendSignal('_gate_enforced', getAppVersion());
 
     // Cache gate information
     if (this.settingsStore) {
@@ -457,8 +444,8 @@ export class SideKit {
     }
 
     // Only allow dismissing dismissable/modal gates
-    if (this.gateInformation && this.appVersion) {
-      const currentVersion = new SemanticVersion(this.appVersion);
+    if (this.gateInformation) {
+      const currentVersion = new SemanticVersion(getAppVersion());
       if (this.gateInformation.isDismissable(currentVersion)) {
         log('Dismissing update gate');
         this.showUpdateScreen = false;
@@ -485,7 +472,6 @@ export class SideKit {
   reset(): void {
     this.cleanup();
     this.isConfigured = false;
-    this.appVersion = undefined;
     this.settingsStore = undefined;
     this.analyticsAgent = undefined;
     this.showUpdateScreen = false;

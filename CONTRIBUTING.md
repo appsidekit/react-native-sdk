@@ -136,8 +136,7 @@ test: add tests for GateInformation model
 2. Add tests for new functionality
 3. Ensure all tests pass: `npm test`
 4. Ensure TypeScript compiles: `npm run typescript`
-5. Update CHANGELOG.md with your changes
-6. Create a Pull Request with a clear description
+5. Create a Pull Request with a clear description
 
 ## Pull Request Guidelines
 
@@ -242,24 +241,15 @@ Update README.md when adding:
 - Configuration options
 - Breaking changes
 
-### CHANGELOG
-
-Always update CHANGELOG.md with:
-- Feature additions
-- Bug fixes
-- Breaking changes
-- Deprecations
-
 ## Release Process
 
 (Maintainers only)
 
 1. Update version in package.json
-2. Update CHANGELOG.md with release date
-3. Create git tag: `git tag v0.1.0`
-4. Push tag: `git push origin v0.1.0`
-5. Publish to npm: `npm publish`
-6. Create GitHub release
+2. Create git tag: `git tag v0.1.0`
+3. Push tag: `git push origin v0.1.0`
+4. Publish to npm: `npm publish`
+5. Create GitHub release
 
 ## Questions?
 

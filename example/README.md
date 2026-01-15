@@ -54,7 +54,6 @@ The app automatically initializes the SDK on mount:
 
 ```typescript
 await SideKit.shared.configure(apiKey, {
-  appVersion: '1.0.0',
   verbose: true,
   presentationMode: 'automatic',
 });
@@ -115,7 +114,6 @@ To test version gates, you'll need to:
 
 1. Configure your SideKit dashboard to set version requirements
 2. Use a valid API key
-3. Adjust the `appVersion` in the SDK configuration
 
 ### Debugging
 

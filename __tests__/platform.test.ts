@@ -6,12 +6,19 @@ import {
   getLanguageCode,
   openURL,
   getStoreURL,
+  getAppVersion,
 } from '../src/utils/platform';
 import { Platform, Linking } from 'react-native';
 
 describe('platform', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('getAppVersion', () => {
+    it('should return app version', () => {
+      expect(getAppVersion()).toBe('1.0.0');
+    });
   });
 
   describe('getPlatform', () => {
@@ -43,22 +50,9 @@ describe('platform', () => {
   });
 
   describe('getDeviceModel', () => {
-    it('should return device model for iOS', () => {
-      (Platform as any).OS = 'ios';
+    it('should return device model', () => {
       const model = getDeviceModel();
-      expect(model).toBe('iPhone');
-    });
-
-    it('should return device model for Android', () => {
-      (Platform as any).OS = 'android';
-      const model = getDeviceModel();
-      expect(model).toBe('Android');
-    });
-
-    it('should return unknown for unsupported platform', () => {
-      (Platform as any).OS = 'web';
-      const model = getDeviceModel();
-      expect(model).toBe('unknown');
+      expect(model).toBe('iPhone 15');
     });
   });
 
