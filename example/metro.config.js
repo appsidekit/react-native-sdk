@@ -5,18 +5,22 @@ const sdkRoot = path.resolve(__dirname, '..');
 
 const config = getDefaultConfig(__dirname);
 
+// Helper to escape special regex characters in paths
+const escapeRegex = (str) => str.replace(/[\\^$*+?.()|[\]{}]/g, '\\$&');
+
 // Watch SDK source files during development
 config.watchFolders = [sdkRoot];
 
-// Prevent issues with duplicate modules
+// Prevent issues with duplicate React/React Native by blocking only those from SDK's node_modules
 config.resolver.blockList = [
-  new RegExp(`${path.escape(path.join(sdkRoot, 'node_modules', 'react-native'))}/.*`),
-  new RegExp(`${path.escape(path.join(sdkRoot, 'node_modules', 'react'))}/.*`),
+  new RegExp(`${escapeRegex(path.join(sdkRoot, 'node_modules', 'react-native'))}/.*`),
+  new RegExp(`${escapeRegex(path.join(sdkRoot, 'node_modules', 'react'))}/.*`),
 ];
 
-// Resolve SDK from parent directory
-config.resolver.extraNodeModules = {
-  '@sidekit/react-native': sdkRoot,
-};
+// Set node modules paths to prioritize example app's node_modules
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, 'node_modules'),
+  path.resolve(sdkRoot, 'node_modules'),
+];
 
 module.exports = config;

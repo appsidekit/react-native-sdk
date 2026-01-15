@@ -52,8 +52,12 @@
     "registry": "https://registry.npmjs.org/"
   },
   "peerDependencies": {
-    "react": ">=18.3.1",
-    "react-native": ">=0.70.0"
+    "react": "*",
+    "react-native": "*",
+    "expo": "*",
+    "expo-application": "*",
+    "expo-device": "*",
+    "@react-native-async-storage/async-storage": "*"
   },
   "peerDependenciesMeta": {
     "@react-native-async-storage/async-storage": {
@@ -90,8 +94,5 @@
         }
       ]
     ]
-  },
-  "dependencies": {
-    "react-native-device-info": "^15.0.1"
   }
 }

@@ -3,14 +3,18 @@
  */
 
 import { Platform, Linking } from 'react-native';
-import DeviceInfo from 'react-native-device-info';
+import * as Application from 'expo-application';
+import * as Device from 'expo-device';
+
+
 
 /**
  * Get the current app version
  * @returns App version string
  */
 export function getAppVersion(): string {
-  return DeviceInfo.getVersion();
+  // will only be null on web
+  return Application.nativeApplicationVersion || '';
 }
 
 /**
@@ -35,7 +39,7 @@ export function getOSVersion(): string {
  * @returns Device model string
  */
 export function getDeviceModel(): string {
-  return DeviceInfo.getModel();
+  return Device.modelName || '';
 }
 
 /**

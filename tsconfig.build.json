@@ -4,7 +4,6 @@
     "outDir": "lib/typescript",
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": true
   },
   "exclude": ["node_modules", "lib", "example", "__tests__"]
 }
