@@ -27,22 +27,22 @@ export class Signal implements SignalType {
  * Signal payload with metadata
  */
 export class SignalPayload implements SignalPayloadType {
-  osVersion: string;
-  appVersion: string;
-  country: string;
-  language: string;
-  platform: string;
-  deviceModel: string;
+  osVersion?: string;
+  appVersion?: string;
+  country?: string;
+  language?: string;
+  platform?: string;
+  deviceModel?: string;
   signals: SignalType[];
 
   constructor(
     metadata: {
-      osVersion: string;
-      appVersion: string;
-      country: string;
-      language: string;
-      platform: string;
-      deviceModel: string;
+      osVersion?: string;
+      appVersion?: string;
+      country?: string;
+      language?: string;
+      platform?: string;
+      deviceModel?: string;
     },
     signals: SignalType[]
   ) {

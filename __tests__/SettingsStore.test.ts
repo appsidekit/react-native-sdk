@@ -91,9 +91,11 @@ describe('SettingsStore', () => {
 
     it('should return cached gate information', async () => {
       const mockGateData = {
+        gateType: VersionGateType.Forced,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: { version: '2.0.0', type: VersionGateType.Forced },
-        blockedVersions: [],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update required',
+        storeUrl: 'https://apps.apple.com/app/123',
       };
 
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(
@@ -116,8 +118,11 @@ describe('SettingsStore', () => {
   describe('setCachedGateInformation', () => {
     it('should cache gate information', async () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Live,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [],
+        latestVersion: null,
+        whatsNew: null,
+        storeUrl: null,
       });
 
       await store.setCachedGateInformation(gateInfo);
@@ -129,8 +134,11 @@ describe('SettingsStore', () => {
 
     it('should persist to AsyncStorage', async () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Live,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [],
+        latestVersion: null,
+        whatsNew: null,
+        storeUrl: null,
       });
 
       await store.setCachedGateInformation(gateInfo);

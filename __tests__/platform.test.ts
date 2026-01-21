@@ -5,7 +5,6 @@ import {
   getCountryCode,
   getLanguageCode,
   openURL,
-  getStoreURL,
   getAppVersion,
 } from '../src/utils/platform';
 import { Platform, Linking } from 'react-native';
@@ -60,7 +59,7 @@ describe('platform', () => {
     it('should return country code', () => {
       const code = getCountryCode();
       expect(typeof code).toBe('string');
-      expect(code.length).toBeGreaterThan(0);
+      expect(code!.length).toBeGreaterThan(0);
     });
   });
 
@@ -68,7 +67,7 @@ describe('platform', () => {
     it('should return language code', () => {
       const code = getLanguageCode();
       expect(typeof code).toBe('string');
-      expect(code.length).toBeGreaterThan(0);
+      expect(code!.length).toBeGreaterThan(0);
     });
   });
 
@@ -98,48 +97,4 @@ describe('platform', () => {
     });
   });
 
-  describe('getStoreURL', () => {
-    it('should return iOS URL on iOS platform', () => {
-      (Platform as any).OS = 'ios';
-      const iosURL = 'https://apps.apple.com/app/123';
-      const androidURL = 'https://play.google.com/store/apps/details?id=com.example';
-
-      const result = getStoreURL(iosURL, androidURL);
-
-      expect(result).toBe(iosURL);
-    });
-
-    it('should return Android URL on Android platform', () => {
-      (Platform as any).OS = 'android';
-      const iosURL = 'https://apps.apple.com/app/123';
-      const androidURL = 'https://play.google.com/store/apps/details?id=com.example';
-
-      const result = getStoreURL(iosURL, androidURL);
-
-      expect(result).toBe(androidURL);
-    });
-
-    it('should return null when both URLs are undefined', () => {
-      const result = getStoreURL(undefined, undefined);
-      expect(result).toBeNull();
-    });
-
-    it('should return iOS URL when Android URL is undefined', () => {
-      (Platform as any).OS = 'android';
-      const iosURL = 'https://apps.apple.com/app/123';
-
-      const result = getStoreURL(iosURL, undefined);
-
-      expect(result).toBe(iosURL);
-    });
-
-    it('should return Android URL when iOS URL is undefined', () => {
-      (Platform as any).OS = 'ios';
-      const androidURL = 'https://play.google.com/store/apps/details?id=com.example';
-
-      const result = getStoreURL(undefined, androidURL);
-
-      expect(result).toBe(androidURL);
-    });
-  });
 });

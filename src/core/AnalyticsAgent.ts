@@ -36,7 +36,20 @@ export class AnalyticsAgent {
    */
   async getGateInformation(): Promise<GateInformation | null> {
     try {
-      const url = `${API_BASE_URL}${API_VERSION_ENDPOINT}`;
+      const platform = getPlatform();
+      const appVersion = getAppVersion();
+
+      if (!appVersion) {
+        error('Failed to get app version');
+        return null;
+      }
+      if (!platform) {
+        error('Failed to get platform');
+        return null;
+      }
+
+      const storeType = platform === 'ios' ? 0 : 1;
+      const url = `${API_BASE_URL}${API_VERSION_ENDPOINT}?storeType=${storeType}&appVersion=${encodeURIComponent(appVersion)}`;
       log(`Fetching gate information from ${url}`);
 
       const response = await fetch(url, {
@@ -70,14 +83,13 @@ export class AnalyticsAgent {
    */
   async sendSignals(signals: Array<{ name: string; value: string }>): Promise<void> {
     try {
-      // Collect metadata
       const metadata = {
         osVersion: getOSVersion(),
-        appVersion: getAppVersion(),
-        country: getCountryCode(),
-        language: getLanguageCode(),
-        platform: getPlatform(),
-        deviceModel: getDeviceModel(),
+        appVersion: getAppVersion() || undefined,
+        country: getCountryCode() || undefined,
+        language: getLanguageCode() || undefined,
+        platform: getPlatform() || undefined,
+        deviceModel: getDeviceModel() || undefined,
       };
 
       const payload = new SignalPayload(metadata, signals);
@@ -104,7 +116,6 @@ export class AnalyticsAgent {
       }
     } catch (err) {
       error('Failed to send signals', err);
-      // Don't throw - signal sending should not block app functionality
     }
   }
 }

@@ -28,58 +28,50 @@ yarn add @sidekit/react-native @react-native-async-storage/async-storage
 
 ## Quick Start
 
-### 1. Initialize the SDK
+### 1. Wrap your app with SideKitProvider
 
 ```typescript
-import SideKit from '@sidekit/react-native';
-
-// Configure SDK at app startup
-await SideKit.shared.configure('your-api-key', {
-  verbose: __DEV__,
-  presentationMode: 'automatic', // or 'manual'
-});
-```
-
-### 2. Add the Version Gate Component
-
-```typescript
-import { DefaultVersionGate } from '@sidekit/react-native';
+import { SideKitProvider } from '@sidekit/react-native';
 
 function App() {
   return (
-    <>
-      {/* Your app content */}
+    <SideKitProvider apiKey="your-api-key" verbose={__DEV__}>
       <YourAppContent />
-
-      {/* Version gate modal (shows automatically when update available) */}
-      <DefaultVersionGate />
-    </>
+    </SideKitProvider>
   );
 }
 ```
 
-### 3. Track Events
+That's it! The SDK will automatically:
+- Initialize and configure itself
+- Monitor for version updates
+- Display update prompts when needed
 
-```typescript
-// Track event with key only
-SideKit.shared.sendSignal('button_clicked');
-
-// Track event with key and value
-SideKit.shared.sendSignal('page_viewed', 'home_screen');
-```
-
-### 4. Subscribe to State Changes
+### 2. Use the SDK in Your Components
 
 ```typescript
 import { useSideKit } from '@sidekit/react-native';
 
 function MyComponent() {
-  const { showUpdateScreen, gateInformation, isAnalyticsEnabled } = useSideKit();
+  const {
+    showUpdateScreen,
+    gateInformation,
+    isAnalyticsEnabled,
+    sendSignal,
+    setAnalyticsEnabled,
+  } = useSideKit();
+
+  // Track events
+  const handleButtonClick = () => {
+    sendSignal('button_clicked');
+  };
 
   return (
     <View>
       <Text>Update Available: {showUpdateScreen ? 'Yes' : 'No'}</Text>
       <Text>Analytics: {isAnalyticsEnabled ? 'Enabled' : 'Disabled'}</Text>
+      <Button onPress={handleButtonClick} title="Track Event" />
+      <Switch value={isAnalyticsEnabled} onValueChange={setAnalyticsEnabled} />
     </View>
   );
 }
@@ -96,7 +88,7 @@ npm start
 ```
 
 The example app showcases:
-- SDK configuration
+- SideKitProvider integration
 - Version gate with automatic presentation
 - Analytics event tracking
 - Analytics opt-in/opt-out
@@ -105,112 +97,91 @@ The example app showcases:
 
 ## API Reference
 
-### `SideKit.shared.configure(apiKey, options?)`
+### `<SideKitProvider />` Component
 
-Initialize the SDK with your API key and configuration options.
+Main provider component that wraps your entire app and handles SDK configuration.
 
-**Parameters:**
+**Props:**
 - `apiKey` (string, required): Your SideKit API key
-- `options` (object, optional):
-  - `verbose` (boolean): Enable debug logging (default: false)
-  - `presentationMode` ('automatic' | 'manual'): How to present update gates (default: 'automatic')
+- `presentationMode` ('automatic' | 'manual', optional): How to present update gates (default: 'automatic')
+- `verbose` (boolean, optional): Enable debug logging (default: false)
+- `children` (ReactNode, required): Your app content
 
 **Example:**
 ```typescript
-await SideKit.shared.configure('sk_abc123', {
-  verbose: true,
-  presentationMode: 'automatic',
-});
-```
-
-### `SideKit.shared.sendSignal(key, value?)`
-
-Track a custom analytics event.
-
-**Parameters:**
-- `key` (string, required): Event name
-- `value` (string, optional): Event value
-
-**Example:**
-```typescript
-SideKit.shared.sendSignal('button_clicked');
-SideKit.shared.sendSignal('purchase_completed', '29.99');
+<SideKitProvider
+  apiKey="sk_abc123"
+  verbose={true}
+  presentationMode="automatic"
+>
+  <YourApp />
+</SideKitProvider>
 ```
 
 ### `useSideKit()` Hook
 
-React hook for subscribing to SDK state changes.
+React hook that provides the complete public API for the SideKit SDK. Returns both state and methods for interacting with the SDK.
 
 **Returns:**
+
+**State:**
 - `showUpdateScreen` (boolean): Whether to show update screen
 - `gateInformation` (GateInformation | null): Current gate information
 - `isAnalyticsEnabled` (boolean): Whether analytics is enabled
 
+**Methods:**
+- `sendSignal(key: string, value?: string)`: Track a custom analytics event
+- `dismissUpdateGate()`: Dismiss the update gate (for dismissable gates only)
+- `setAnalyticsEnabled(enabled: boolean)`: Enable or disable analytics tracking
+
 **Example:**
 ```typescript
-const { showUpdateScreen, gateInformation } = useSideKit();
+const {
+  // State
+  showUpdateScreen,
+  gateInformation,
+  isAnalyticsEnabled,
+  // Methods
+  sendSignal,
+  dismissUpdateGate,
+  setAnalyticsEnabled,
+} = useSideKit();
+
+// Track events
+sendSignal('button_clicked');
+sendSignal('purchase_completed', '29.99');
+
+// Dismiss update gate
+dismissUpdateGate();
+
+// Toggle analytics
+setAnalyticsEnabled(false);
 ```
 
 ### `<DefaultVersionGate />` Component
 
-Pre-built UI component for displaying update prompts.
+**Note:** This component is now internal to the SDK and is automatically rendered by `SideKitProvider` when `presentationMode` is set to `'automatic'`. You should not use it directly.
 
-**Props:**
-- `dismissable` (boolean, optional): Override dismissable behavior
-- `onSkip` (function, optional): Callback when user skips update
-
-**Example:**
-```typescript
-<DefaultVersionGate
-  onSkip={() => console.log('User skipped update')}
-/>
-```
-
-### Properties
-
-#### `SideKit.shared.showUpdateScreen`
-
-Get whether update screen should be shown.
-
-```typescript
-const shouldShow = SideKit.shared.showUpdateScreen;
-```
-
-#### `SideKit.shared.gateInformation`
-
-Get current gate information.
-
-```typescript
-const info = SideKit.shared.gateInformation;
-console.log(info?.latestVersion); // "2.0.0"
-console.log(info?.whatsNew); // "Bug fixes and improvements"
-```
-
-#### `SideKit.shared.isAnalyticsEnabled`
-
-Get or set analytics enabled state.
-
-```typescript
-// Get
-const enabled = SideKit.shared.isAnalyticsEnabled;
-
-// Set
-SideKit.shared.isAnalyticsEnabled = false;
-```
+For custom version gate UI, use `presentationMode="manual"` and build your own UI using the `useSideKit()` hook.
 
 ## Version Gating
 
-SideKit supports three types of version gates:
+SideKit supports four types of version gates, configured in your SideKit dashboard. The server determines which gate type to show based on the current app version:
+
+### Live (Not Blocked)
+
+The current version is up-to-date and not blocked. No gate is shown.
+
+```typescript
+VersionGateType.Live = -1
+```
 
 ### Forced Updates
 
 Users must update before continuing. No skip button is shown.
 
 ```typescript
-// Configured in your SideKit dashboard
-{
-  minVersion: { version: "2.0.0", type: VersionGateType.Forced }
-}
+VersionGateType.Forced = 0
 ```
 
 ### Dismissable Updates
@@ -218,17 +189,18 @@ Users must update before continuing. No skip button is shown.
 Users can skip the update. Gate is shown once per update.
 
 ```typescript
-// Configured in your SideKit dashboard
-{
-  blockedVersions: [
-    { version: "1.0.0", type: VersionGateType.Dismissable }
-  ]
-}
+VersionGateType.Dismissable = 1
 ```
 
 ### Modal Updates
 
 Similar to dismissable, but with modal presentation.
+
+```typescript
+VersionGateType.Modal = 2
+```
+
+All version gating logic is handled server-side. The SDK automatically receives the appropriate gate type based on the current app version and your dashboard configuration.
 
 ## Analytics
 
@@ -242,16 +214,22 @@ SideKit automatically tracks these events:
 
 ### Custom Signals
 
-Track your own events:
+Track your own events using the `useSideKit()` hook:
 
 ```typescript
-// User interactions
-SideKit.shared.sendSignal('button_clicked', 'signup');
-SideKit.shared.sendSignal('screen_viewed', 'home');
+function MyComponent() {
+  const { sendSignal } = useSideKit();
 
-// Business events
-SideKit.shared.sendSignal('purchase_completed', '29.99');
-SideKit.shared.sendSignal('subscription_started', 'premium');
+  const handleSignup = () => {
+    sendSignal('button_clicked', 'signup');
+  };
+
+  const handlePurchase = () => {
+    sendSignal('purchase_completed', '29.99');
+  };
+
+  // ... rest of component
+}
 ```
 
 ### Automatic Metadata
@@ -266,10 +244,19 @@ Every signal includes:
 
 ### Opt-out
 
-Users can opt-out of analytics:
+Users can opt-out of analytics using the `useSideKit()` hook:
 
 ```typescript
-SideKit.shared.isAnalyticsEnabled = false;
+function SettingsComponent() {
+  const { isAnalyticsEnabled, setAnalyticsEnabled } = useSideKit();
+
+  return (
+    <Switch
+      value={isAnalyticsEnabled}
+      onValueChange={setAnalyticsEnabled}
+    />
+  );
+}
 ```
 
 Note: Version gating continues to work even when analytics is disabled.
@@ -279,16 +266,27 @@ Note: Version gating continues to work even when analytics is disabled.
 For custom UI, use manual presentation mode:
 
 ```typescript
-await SideKit.shared.configure('your-api-key', {
-  presentationMode: 'manual',
-});
+function App() {
+  return (
+    <SideKitProvider
+      apiKey="your-api-key"
+      presentationMode="manual"
+    >
+      <YourApp />
+    </SideKitProvider>
+  );
+}
 
-// Watch for updates
-const { showUpdateScreen, gateInformation } = useSideKit();
+// In your component:
+function YourApp() {
+  const { showUpdateScreen, gateInformation } = useSideKit();
 
-if (showUpdateScreen && gateInformation) {
-  // Show your custom UI
-  showCustomUpdateScreen(gateInformation);
+  if (showUpdateScreen && gateInformation) {
+    // Show your custom UI
+    return <CustomUpdateScreen gateInfo={gateInformation} />;
+  }
+
+  return <YourAppContent />;
 }
 ```
 
@@ -311,21 +309,15 @@ When testing your app, you can mock the SDK:
 
 ```typescript
 jest.mock('@sidekit/react-native', () => ({
-  SideKit: {
-    shared: {
-      configure: jest.fn(),
-      sendSignal: jest.fn(),
-      showUpdateScreen: false,
-      gateInformation: null,
-      isAnalyticsEnabled: true,
-    },
-  },
+  SideKitProvider: ({ children }: { children: React.ReactNode }) => children,
   useSideKit: jest.fn(() => ({
     showUpdateScreen: false,
     gateInformation: null,
     isAnalyticsEnabled: true,
+    sendSignal: jest.fn(),
+    dismissUpdateGate: jest.fn(),
+    setAnalyticsEnabled: jest.fn(),
   })),
-  DefaultVersionGate: () => null,
 }));
 ```
 
@@ -333,22 +325,24 @@ jest.mock('@sidekit/react-native', () => ({
 
 ### SDK not initializing
 
-Ensure you're calling `configure()` before any other SDK methods:
+Ensure you're wrapping your app with `SideKitProvider`:
 
 ```typescript
-await SideKit.shared.configure('your-api-key');
+<SideKitProvider apiKey="your-api-key">
+  <App />
+</SideKitProvider>
 ```
 
 ### Version gate not showing
 
-1. Check that `presentationMode` is set to `'automatic'`
+1. Check that `presentationMode` is set to `'automatic'` (or omitted, since it's the default)
 2. Verify your API key is correct
-3. Enable verbose logging to see detailed logs
+3. Enable verbose logging with `verbose={true}` to see detailed logs
 4. Check your SideKit dashboard configuration
 
 ### Analytics not working
 
-1. Ensure analytics is enabled: `SideKit.shared.isAnalyticsEnabled = true`
+1. Ensure analytics is enabled via the `useSideKit()` hook
 2. Check network connectivity
 3. Verify API key is correct
 4. Enable verbose logging for debugging

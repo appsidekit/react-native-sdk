@@ -6,6 +6,7 @@ This example app demonstrates all features of the SideKit React Native SDK.
 
 - ✅ SDK Configuration
 - ✅ Version Gate (Automatic Presentation)
+- ✅ Version Gate (Manual Presentation with Custom UI)
 - ✅ Analytics Event Tracking
 - ✅ Analytics Opt-in/Opt-out
 - ✅ Real-time State Updates via `useSideKit()` hook
@@ -46,62 +47,6 @@ npm run ios
 npm run android
 ```
 
-## How It Works
-
-### SDK Initialization
-
-The app automatically initializes the SDK on mount:
-
-```typescript
-await SideKit.shared.configure(apiKey, {
-  verbose: true,
-  presentationMode: 'automatic',
-});
-```
-
-### Version Gate
-
-The `DefaultVersionGate` component is rendered at the root level and automatically shows when an update is available:
-
-```typescript
-<DefaultVersionGate
-  onSkip={() => {
-    console.log('User skipped update');
-  }}
-/>
-```
-
-### Analytics Tracking
-
-Track custom events:
-
-```typescript
-// Track event with key only
-SideKit.shared.sendSignal('button_clicked');
-
-// Track event with key and value
-SideKit.shared.sendSignal('page_viewed', 'home_screen');
-```
-
-### State Management
-
-Subscribe to SDK state changes using the `useSideKit()` hook:
-
-```typescript
-const { showUpdateScreen, gateInformation, isAnalyticsEnabled } = useSideKit();
-```
-
-## Project Structure
-
-```
-example/
-├── App.tsx                 # Main app component
-├── app.json               # Expo configuration
-├── package.json           # Dependencies
-├── tsconfig.json          # TypeScript config
-└── metro.config.js        # Metro bundler config (watches SDK source)
-```
-
 ## Development Notes
 
 ### Live SDK Development
@@ -114,6 +59,26 @@ To test version gates, you'll need to:
 
 1. Configure your SideKit dashboard to set version requirements
 2. Use a valid API key
+
+#### Testing Manual Presentation Mode
+
+The example app includes a `CustomVersionGate.tsx` component that demonstrates how to build a custom version gate UI for manual presentation mode.
+
+To test manual presentation mode, open `App.tsx` and update the SideKitProvider configuration to use manual presentation:
+
+```tsx
+import { CustomVersionGate } from './CustomVersionGate';
+
+<SideKitProvider
+  config={{
+    apiKey: 'your-api-key',
+    presentationMode: 'manual', // Change from 'automatic' to 'manual'
+  }}
+>
+  <YourAppContent />
+  <CustomVersionGate /> {/* Add the custom gate component */}
+</SideKitProvider>
+```
 
 ### Debugging
 

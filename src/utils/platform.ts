@@ -6,23 +6,28 @@ import { Platform, Linking } from 'react-native';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
 
-
-
 /**
  * Get the current app version
  * @returns App version string
  */
-export function getAppVersion(): string {
+export function getAppVersion(): string | null {
   // will only be null on web
-  return Application.nativeApplicationVersion || '';
+  return Application.nativeApplicationVersion;
 }
 
 /**
  * Get current platform
  * @returns 'ios' or 'android'
  */
-export function getPlatform(): 'ios' | 'android' {
-  return Platform.OS as 'ios' | 'android';
+export function getPlatform(): 'ios' | 'android' | null {
+  switch (Platform.OS) {
+    case 'ios':
+      return 'ios';
+    case 'android':
+      return 'android';
+    default:
+      return null;
+  }
 }
 
 /**
@@ -38,15 +43,15 @@ export function getOSVersion(): string {
  * Get device model
  * @returns Device model string
  */
-export function getDeviceModel(): string {
-  return Device.modelName || '';
+export function getDeviceModel(): string | null {
+  return Device.modelName;
 }
 
 /**
  * Get country code from locale
  * @returns Country code (e.g., "US")
  */
-export function getCountryCode(): string {
+export function getCountryCode(): string | null {
   try {
     // Try to get from Intl API
     const locale = Intl.DateTimeFormat().resolvedOptions().locale;
@@ -57,14 +62,14 @@ export function getCountryCode(): string {
   } catch (error) {
     // Fallback
   }
-  return 'US';
+  return null;
 }
 
 /**
  * Get language code from locale
  * @returns Language code (e.g., "en")
  */
-export function getLanguageCode(): string {
+export function getLanguageCode(): string | null {
   try {
     // Try to get from Intl API
     const locale = Intl.DateTimeFormat().resolvedOptions().locale;
@@ -73,7 +78,7 @@ export function getLanguageCode(): string {
   } catch (error) {
     // Fallback
   }
-  return 'en';
+  return null;
 }
 
 /**
@@ -92,28 +97,4 @@ export async function openURL(url: string): Promise<boolean> {
   } catch (error) {
     return false;
   }
-}
-
-/**
- * Get the appropriate store URL for the current platform
- * @param appStoreURL iOS App Store URL
- * @param playStoreURL Android Play Store URL
- * @returns Platform-specific store URL or null
- */
-export function getStoreURL(
-  appStoreURL?: string,
-  playStoreURL?: string
-): string | null {
-  const platform = getPlatform();
-
-  if (platform === 'ios' && appStoreURL) {
-    return appStoreURL;
-  }
-
-  if (platform === 'android' && playStoreURL) {
-    return playStoreURL;
-  }
-
-  // Fallback: try to use any available URL
-  return appStoreURL || playStoreURL || null;
 }

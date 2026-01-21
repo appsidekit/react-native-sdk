@@ -1,268 +1,208 @@
 import { GateInformation } from '../src/models/GateInformation';
-import { SemanticVersion } from '../src/models/SemanticVersion';
 import { VersionGateType } from '../src/types';
 
 describe('GateInformation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe('isBlocked', () => {
-    it('should return true if current version < minVersion', () => {
+    it('should return true when gateType is Forced', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Forced,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: {
-          version: '2.0.0',
-          type: VersionGateType.Forced,
-        },
-        blockedVersions: [],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update required',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('1.0.0');
-      expect(gateInfo.isBlocked(currentVersion)).toBe(true);
+      expect(gateInfo.isBlocked()).toBe(true);
     });
 
-    it('should return false if current version >= minVersion', () => {
+    it('should return true when gateType is Dismissable', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Dismissable,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: {
-          version: '2.0.0',
-          type: VersionGateType.Forced,
-        },
-        blockedVersions: [],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update available',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('2.0.0');
-      expect(gateInfo.isBlocked(currentVersion)).toBe(false);
-
-      const higherVersion = new SemanticVersion('2.1.0');
-      expect(gateInfo.isBlocked(higherVersion)).toBe(false);
+      expect(gateInfo.isBlocked()).toBe(true);
     });
 
-    it('should return true if current version is in blockedVersions', () => {
+    it('should return true when gateType is Modal', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Modal,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [
-          { version: '1.2.3', type: VersionGateType.Forced },
-          { version: '1.2.4', type: VersionGateType.Dismissable },
-        ],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update available',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const blockedVersion = new SemanticVersion('1.2.3');
-      expect(gateInfo.isBlocked(blockedVersion)).toBe(true);
-
-      const anotherBlockedVersion = new SemanticVersion('1.2.4');
-      expect(gateInfo.isBlocked(anotherBlockedVersion)).toBe(true);
+      expect(gateInfo.isBlocked()).toBe(true);
     });
 
-    it('should return false if current version is not in blockedVersions', () => {
+    it('should return false when gateType is Live', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Live,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [
-          { version: '1.2.3', type: VersionGateType.Forced },
-        ],
+        latestVersion: null,
+        whatsNew: null,
+        storeUrl: null,
       });
 
-      const unblockedVersion = new SemanticVersion('1.2.5');
-      expect(gateInfo.isBlocked(unblockedVersion)).toBe(false);
-    });
-
-    it('should check both minVersion and blockedVersions', () => {
-      const gateInfo = new GateInformation({
-        lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: {
-          version: '2.0.0',
-          type: VersionGateType.Forced,
-        },
-        blockedVersions: [
-          { version: '2.1.0', type: VersionGateType.Dismissable },
-        ],
-      });
-
-      // Blocked by minVersion
-      const belowMin = new SemanticVersion('1.5.0');
-      expect(gateInfo.isBlocked(belowMin)).toBe(true);
-
-      // Blocked by blockedVersions
-      const explicitlyBlocked = new SemanticVersion('2.1.0');
-      expect(gateInfo.isBlocked(explicitlyBlocked)).toBe(true);
-
-      // Not blocked
-      const validVersion = new SemanticVersion('2.2.0');
-      expect(gateInfo.isBlocked(validVersion)).toBe(false);
-    });
-
-    it('should return false if no requirements set', () => {
-      const gateInfo = new GateInformation({
-        lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [],
-      });
-
-      const anyVersion = new SemanticVersion('1.0.0');
-      expect(gateInfo.isBlocked(anyVersion)).toBe(false);
-    });
-
-    it('should handle invalid version formats gracefully', () => {
-      const gateInfo = new GateInformation({
-        lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: {
-          version: 'invalid',
-          type: VersionGateType.Forced,
-        },
-        blockedVersions: [
-          { version: 'also-invalid', type: VersionGateType.Dismissable },
-        ],
-      });
-
-      const currentVersion = new SemanticVersion('1.0.0');
-      // Should not crash and return false when versions are invalid
-      expect(gateInfo.isBlocked(currentVersion)).toBe(false);
+      expect(gateInfo.isBlocked()).toBe(false);
     });
   });
 
   describe('blockingGateType', () => {
-    it('should return minVersion type if blocked by minVersion', () => {
+    it('should return Forced when gateType is Forced', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Forced,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: {
-          version: '2.0.0',
-          type: VersionGateType.Forced,
-        },
-        blockedVersions: [],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update required',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('1.0.0');
-      expect(gateInfo.blockingGateType(currentVersion)).toBe(
-        VersionGateType.Forced
-      );
+      expect(gateInfo.blockingGateType()).toBe(VersionGateType.Forced);
     });
 
-    it('should return blockedVersion type if blocked by blockedVersions', () => {
+    it('should return Dismissable when gateType is Dismissable', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Dismissable,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [
-          { version: '1.2.3', type: VersionGateType.Dismissable },
-        ],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update available',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('1.2.3');
-      expect(gateInfo.blockingGateType(currentVersion)).toBe(
-        VersionGateType.Dismissable
-      );
+      expect(gateInfo.blockingGateType()).toBe(VersionGateType.Dismissable);
     });
 
-    it('should return null if not blocked', () => {
+    it('should return Modal when gateType is Modal', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Modal,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: {
-          version: '1.0.0',
-          type: VersionGateType.Forced,
-        },
-        blockedVersions: [],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update available',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('2.0.0');
-      expect(gateInfo.blockingGateType(currentVersion)).toBe(null);
+      expect(gateInfo.blockingGateType()).toBe(VersionGateType.Modal);
     });
 
-    it('should prioritize minVersion over blockedVersions', () => {
+    it('should return null when gateType is Live', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Live,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: {
-          version: '2.0.0',
-          type: VersionGateType.Forced,
-        },
-        blockedVersions: [
-          { version: '1.5.0', type: VersionGateType.Dismissable },
-        ],
+        latestVersion: null,
+        whatsNew: null,
+        storeUrl: null,
       });
 
-      // This version matches blockedVersions but is also below minVersion
-      // Should return minVersion type
-      const currentVersion = new SemanticVersion('1.5.0');
-      expect(gateInfo.blockingGateType(currentVersion)).toBe(
-        VersionGateType.Forced
-      );
+      expect(gateInfo.blockingGateType()).toBe(null);
     });
   });
 
   describe('isDismissable', () => {
     it('should return true for Dismissable gate type', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Dismissable,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [
-          { version: '1.2.3', type: VersionGateType.Dismissable },
-        ],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update available',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('1.2.3');
-      expect(gateInfo.isDismissable(currentVersion)).toBe(true);
+      expect(gateInfo.isDismissable()).toBe(true);
     });
 
     it('should return true for Modal gate type', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Modal,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [
-          { version: '1.2.3', type: VersionGateType.Modal },
-        ],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update available',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('1.2.3');
-      expect(gateInfo.isDismissable(currentVersion)).toBe(true);
+      expect(gateInfo.isDismissable()).toBe(true);
     });
 
     it('should return false for Forced gate type', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Forced,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [
-          { version: '1.2.3', type: VersionGateType.Forced },
-        ],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update required',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('1.2.3');
-      expect(gateInfo.isDismissable(currentVersion)).toBe(false);
+      expect(gateInfo.isDismissable()).toBe(false);
     });
 
-    it('should return false if not blocked', () => {
+    it('should return false for Live gate type', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Live,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [],
+        latestVersion: null,
+        whatsNew: null,
+        storeUrl: null,
       });
 
-      const currentVersion = new SemanticVersion('1.2.3');
-      expect(gateInfo.isDismissable(currentVersion)).toBe(false);
+      expect(gateInfo.isDismissable()).toBe(false);
     });
   });
 
   describe('isForced', () => {
     it('should return true for Forced gate type', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Forced,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [
-          { version: '1.2.3', type: VersionGateType.Forced },
-        ],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update required',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('1.2.3');
-      expect(gateInfo.isForced(currentVersion)).toBe(true);
+      expect(gateInfo.isForced()).toBe(true);
     });
 
     it('should return false for Dismissable gate type', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Dismissable,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [
-          { version: '1.2.3', type: VersionGateType.Dismissable },
-        ],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update available',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('1.2.3');
-      expect(gateInfo.isForced(currentVersion)).toBe(false);
+      expect(gateInfo.isForced()).toBe(false);
     });
 
-    it('should return false if not blocked', () => {
+    it('should return false for Modal gate type', () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Modal,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update available',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      const currentVersion = new SemanticVersion('1.2.3');
-      expect(gateInfo.isForced(currentVersion)).toBe(false);
+      expect(gateInfo.isForced()).toBe(false);
+    });
+
+    it('should return false for Live gate type', () => {
+      const gateInfo = new GateInformation({
+        gateType: VersionGateType.Live,
+        lastGateUpdate: '2026-01-01T00:00:00Z',
+        latestVersion: null,
+        whatsNew: null,
+        storeUrl: null,
+      });
+
+      expect(gateInfo.isForced()).toBe(false);
     });
   });
 });

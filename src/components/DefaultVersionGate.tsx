@@ -1,9 +1,7 @@
 /**
  * DefaultVersionGate - Pre-built version gate UI component
  *
- * A beautiful full-screen modal that automatically displays when an app update
- * is available. Matches the iOS SDK design with gradient background, version badge,
- * and action buttons.
+ * A full-screen modal that automatically displays when an app update is available.
  *
  * @module DefaultVersionGate
  */
@@ -18,136 +16,51 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSideKit } from '../index';
-import { openURL, getStoreURL, getAppVersion } from '../utils/platform';
-import { SideKit } from '../core/SideKit';
-import { SemanticVersion } from '../models/SemanticVersion';
-import { GateInformation } from '../models/GateInformation';
+import { openURL } from '../utils/platform';
+import { warn } from '../utils/logger';
 
 /**
- * Props for the DefaultVersionGate component.
+ * Props for DefaultVersionGate component
+ * Currently empty as the component uses no external props
  */
-export interface DefaultVersionGateProps {
-  /**
-   * Override whether the gate is dismissable.
-   *
-   * If undefined, the dismissable state will be determined from the gate information
-   * received from the SideKit API. Set to false for forced updates, true for dismissable.
-   *
-   * @default undefined (determined by gate configuration)
-   */
-  dismissable?: boolean;
-
-  /**
-   * Callback invoked when user taps "Skip for now" button.
-   *
-   * Only called for dismissable gates. Use this to perform additional actions
-   * when the user chooses to skip the update.
-   *
-   * @example
-   * ```typescript
-   * <DefaultVersionGate
-   *   onSkip={() => {
-   *     console.log('User skipped update');
-   *     analytics.track('update_skipped');
-   *   }}
-   * />
-   * ```
-   */
-  onSkip?: () => void;
-}
+export interface DefaultVersionGateProps {}
 
 /**
- * DefaultVersionGate - Pre-built update prompt component.
+ * DefaultVersionGate - Pre-built update prompt component. Displays a full-screen modal when an app update is available.
  *
- * Displays a beautiful full-screen modal when an app update is available.
- * Automatically shows/hides based on SDK state. Works in both automatic
- * and manual presentation modes.
+ * This component is automatically rendered by SideKitProvider when
+ * presentationMode is 'automatic'. It should not be used directly.
  *
- * Features:
- * - Gradient background (black to blue)
- * - Large bold title: "Update" / "Available"
- * - Version badge showing latest version
- * - Description text from gate information
- * - "Get the Update" primary button
- * - "Skip for now" secondary button (dismissable gates only)
- *
- * @param {DefaultVersionGateProps} props - Component props
  * @returns {JSX.Element | null} The modal component or null if no update available
  *
- * @example
- * ```typescript
- * import { DefaultVersionGate } from '@sidekit/react-native';
- *
- * function App() {
- *   return (
- *     <>
- *       <YourAppContent />
- *       <DefaultVersionGate
- *         onSkip={() => console.log('User skipped update')}
- *       />
- *     </>
- *   );
- * }
- * ```
- *
- * @example
- * ```typescript
- * // Force non-dismissable gate
- * <DefaultVersionGate dismissable={false} />
- *
- * // Force dismissable gate with callback
- * <DefaultVersionGate
- *   dismissable={true}
- *   onSkip={() => {
- *     console.log('User skipped');
- *     // Track in analytics, show reminder later, etc.
- *   }}
- * />
- * ```
+ * @internal
  */
-export function DefaultVersionGate({
-  dismissable,
-  onSkip,
-}: DefaultVersionGateProps): JSX.Element | null {
-  const { gateInformation, showUpdateScreen } = useSideKit();
+export function DefaultVersionGate(): JSX.Element | null {
+  const { gateInformation, showUpdateScreen, dismissUpdateGate } = useSideKit();
 
   if (!showUpdateScreen || !gateInformation) {
     return null;
   }
 
-  // Determine if dismissable
-  const isDismissable =
-    dismissable !== undefined
-      ? dismissable
-      : (gateInformation as GateInformation).isDismissable(
-          new SemanticVersion(getAppVersion())
-        );
+  const isDismissable = gateInformation.isDismissable();
 
   const handleUpdate = async () => {
-    // Try to get store URL
-    const storeURL = getStoreURL(
-      gateInformation.appStoreURL,
-      gateInformation.appStoreURL // For now, use same URL for both platforms
-    );
+    const storeURL = gateInformation.storeUrl;
 
     if (storeURL) {
       const opened = await openURL(storeURL);
       if (!opened) {
-        console.warn('[SideKit] Failed to open store URL');
+        warn('Failed to open store URL');
       }
     } else {
-      console.warn('[SideKit] No store URL available');
+      warn('No store URL available');
     }
   };
 
   const handleSkip = () => {
-    if (isDismissable) {
-      SideKit.shared.dismissUpdateGate();
-      if (onSkip) {
-        onSkip();
-      }
-    }
+    dismissUpdateGate();
   };
 
   return (
@@ -157,27 +70,25 @@ export function DefaultVersionGate({
       presentationStyle="fullScreen"
       statusBarTranslucent
     >
-      <StatusBar barStyle="light-content" backgroundColor="#000033" />
-      <SafeAreaView style={styles.container}>
-        {/* Gradient background simulation */}
-        <View style={styles.gradientContainer}>
-          <View style={styles.gradientTop} />
-          <View style={styles.gradientBottom} />
-        </View>
-
-        {/* Content */}
-        <View style={styles.content}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <LinearGradient
+        colors={['#000000', '#007AFF']}
+        style={styles.gradient}
+      >
+        <SafeAreaView style={styles.container}>
+          {/* Content */}
+          <View style={styles.content}>
           {/* Title */}
           <View style={styles.titleContainer}>
             <Text style={styles.titleLine}>Update</Text>
-            <Text style={styles.titleLine}>Available</Text>
+            <Text style={[styles.titleLine, styles.titleLineSecond]}>Available</Text>
           </View>
 
           {/* Version Badge */}
           {gateInformation.latestVersion && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>
-                v{gateInformation.latestVersion}
+                {gateInformation.latestVersion}
               </Text>
             </View>
           )}
@@ -212,103 +123,83 @@ export function DefaultVersionGate({
             </TouchableOpacity>
           )}
         </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </LinearGradient>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#000033',
-  },
-  gradientContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  gradientTop: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  gradientBottom: {
-    flex: 2,
-    backgroundColor: '#000066',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 32,
-    paddingTop: 80,
+    paddingHorizontal: 30,
+    paddingTop: 100,
     paddingBottom: 40,
     justifyContent: 'flex-start',
   },
   titleContainer: {
-    marginBottom: 32,
+    marginBottom: 40,
   },
   titleLine: {
     fontSize: 64,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    lineHeight: 72,
+    lineHeight: 64,
+  },
+  titleLineSecond: {
+    marginTop: -12,
   },
   badge: {
     alignSelf: 'flex-start',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 24,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 100,
   },
   badgeText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '900',
     color: '#000000',
   },
   description: {
     fontSize: 17,
-    lineHeight: 24,
+    lineHeight: 28,
     color: '#FFFFFF',
     opacity: 0.95,
-    marginBottom: 32,
+    marginTop: 10,
   },
   spacer: {
     flex: 1,
   },
   primaryButton: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: 20,
     borderRadius: 18,
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
   primaryButtonText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     color: '#000000',
   },
   secondaryButton: {
     backgroundColor: 'transparent',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingVertical: 20,
     borderRadius: 18,
     borderWidth: 3,
     borderColor: '#FFFFFF',
     alignItems: 'center',
   },
   secondaryButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '400',
     color: '#FFFFFF',
   },
 });

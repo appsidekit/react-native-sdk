@@ -12,7 +12,6 @@ jest.mock('../src/index', () => ({
 // Mock platform utilities
 jest.mock('../src/utils/platform', () => ({
   openURL: jest.fn(() => Promise.resolve(true)),
-  getStoreURL: jest.fn((ios, android) => ios || android),
   getAppVersion: jest.fn(() => '1.0.0'),
 }));
 
@@ -35,7 +34,7 @@ describe('DefaultVersionGate', () => {
       isAnalyticsEnabled: true,
     });
 
-    const result = DefaultVersionGate({});
+    const result = DefaultVersionGate();
     expect(result).toBeNull();
   });
 
@@ -46,18 +45,17 @@ describe('DefaultVersionGate', () => {
       isAnalyticsEnabled: true,
     });
 
-    const result = DefaultVersionGate({});
+    const result = DefaultVersionGate();
     expect(result).toBeNull();
   });
 
   it('should return JSX when conditions are met', () => {
     const gateInfo = new GateInformation({
+      gateType: VersionGateType.Forced,
       lastGateUpdate: '2026-01-01T00:00:00Z',
-      minVersion: { version: '2.0.0', type: VersionGateType.Forced },
-      blockedVersions: [],
       latestVersion: '2.1.0',
       whatsNew: 'Bug fixes and improvements',
-      appStoreURL: 'https://apps.apple.com/app/123',
+      storeUrl: 'https://apps.apple.com/app/123',
     });
 
     mockUseSideKit.mockReturnValue({
@@ -66,19 +64,18 @@ describe('DefaultVersionGate', () => {
       isAnalyticsEnabled: true,
     });
 
-    const result = DefaultVersionGate({});
+    const result = DefaultVersionGate();
     expect(result).not.toBeNull();
     expect(React.isValidElement(result)).toBe(true);
   });
 
-  it('should handle dismissable prop', () => {
+  it('should determine dismissable state from API gate information', () => {
     const gateInfo = new GateInformation({
+      gateType: VersionGateType.Dismissable,
       lastGateUpdate: '2026-01-01T00:00:00Z',
-      blockedVersions: [
-        { version: '1.0.0', type: VersionGateType.Dismissable },
-      ],
       latestVersion: '2.0.0',
       whatsNew: 'New features',
+      storeUrl: null,
     });
 
     mockUseSideKit.mockReturnValue({
@@ -87,18 +84,18 @@ describe('DefaultVersionGate', () => {
       isAnalyticsEnabled: true,
     });
 
-    const result = DefaultVersionGate({ dismissable: true });
+    const result = DefaultVersionGate();
     expect(result).not.toBeNull();
     expect(React.isValidElement(result)).toBe(true);
   });
 
-  it('should call onSkip callback when provided', () => {
-    const onSkip = jest.fn();
+  it('should work with forced update gates', () => {
     const gateInfo = new GateInformation({
+      gateType: VersionGateType.Forced,
       lastGateUpdate: '2026-01-01T00:00:00Z',
-      blockedVersions: [
-        { version: '1.0.0', type: VersionGateType.Dismissable },
-      ],
+      latestVersion: null,
+      whatsNew: null,
+      storeUrl: null,
     });
 
     mockUseSideKit.mockReturnValue({
@@ -107,7 +104,7 @@ describe('DefaultVersionGate', () => {
       isAnalyticsEnabled: true,
     });
 
-    const result = DefaultVersionGate({ dismissable: true, onSkip });
+    const result = DefaultVersionGate();
 
     // Component should be valid
     expect(result).not.toBeNull();
@@ -116,11 +113,9 @@ describe('DefaultVersionGate', () => {
 
   it('should export DefaultVersionGateProps type', () => {
     // This test just verifies that types are properly exported
+    // The props interface is now empty, but should still be defined
     const props: import('../src/components/DefaultVersionGate').DefaultVersionGateProps =
-      {
-        dismissable: true,
-        onSkip: () => {},
-      };
+      {};
     expect(props).toBeDefined();
   });
 });

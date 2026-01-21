@@ -57,6 +57,7 @@
     "expo": "*",
     "expo-application": "*",
     "expo-device": "*",
+    "expo-linear-gradient": "*",
     "@react-native-async-storage/async-storage": "*"
   },
   "peerDependenciesMeta": {

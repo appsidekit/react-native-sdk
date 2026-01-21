@@ -224,8 +224,8 @@ Add comprehensive JSDoc comments for all public APIs:
  *
  * @example
  * ```typescript
- * SideKit.shared.sendSignal('button_clicked');
- * SideKit.shared.sendSignal('purchase_completed', '29.99');
+ * sendSignal('button_clicked');
+ * sendSignal('purchase_completed', '29.99');
  * ```
  */
 sendSignal(key: string, value?: string): void {

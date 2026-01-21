@@ -2,7 +2,7 @@
  * SemanticVersion - Version string parsing and comparison
  *
  * Parses version strings like "1.2.3", "2.0", "1", "1.2.3.4.5"
- * and provides comparison methods that match iOS SDK behavior.
+ * and provides comparison methods.
  */
 export class SemanticVersion {
   private components: number[];

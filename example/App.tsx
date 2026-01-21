@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,51 +9,38 @@ import {
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import SideKit, { useSideKit, DefaultVersionGate } from '@sidekit/react-native';
+import * as Application from 'expo-application';
+import { useSideKit, SideKitProvider } from '@sidekit/react-native';
+import { CustomVersionGate } from './CustomVersionGate';
 
-export default function App() {
-  const [configured, setConfigured] = useState(false);
-  const [apiKey, setApiKey] = useState('demo-api-key');
-  const { showUpdateScreen, gateInformation, isAnalyticsEnabled } = useSideKit();
-
-  // Auto-initialize SDK on mount
-  useEffect(() => {
-    initializeSDK();
-  }, []);
-
-  const initializeSDK = async () => {
-    try {
-      await SideKit.shared.configure(apiKey, {
-        verbose: true,
-        presentationMode: 'automatic',
-      });
-      setConfigured(true);
-      console.log('SDK initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize SDK:', error);
-      Alert.alert('Error', 'Failed to initialize SDK: ' + (error as Error).message);
-    }
-  };
+function AppContent() {
+  const {
+    showUpdateScreen,
+    gateInformation,
+    isAnalyticsEnabled,
+    setAnalyticsEnabled,
+    sendSignal,
+  } = useSideKit();
 
   const handleTrackEvent = () => {
-    SideKit.shared.sendSignal('button_clicked');
+    sendSignal('ABC');
     Alert.alert('Success', 'Event tracked: button_clicked');
   };
 
   const handleTrackEventWithValue = () => {
-    SideKit.shared.sendSignal('page_viewed', 'home_screen');
+    sendSignal('ABC', 'home_screen');
     Alert.alert('Success', 'Event tracked: page_viewed = home_screen');
   };
 
   const handleToggleAnalytics = () => {
-    SideKit.shared.isAnalyticsEnabled = !isAnalyticsEnabled;
+    setAnalyticsEnabled(!isAnalyticsEnabled);
     Alert.alert(
-      'Analytics ' + (SideKit.shared.isAnalyticsEnabled ? 'Enabled' : 'Disabled'),
-      'Analytics tracking has been ' + (SideKit.shared.isAnalyticsEnabled ? 'enabled' : 'disabled')
+      'Analytics ' + (isAnalyticsEnabled ? 'Enabled' : 'Disabled'),
+      'Analytics tracking has been ' + (isAnalyticsEnabled ? 'enabled' : 'disabled')
     );
   };
 
-  const handleForceCheck = async () => {
+  const handleForceCheck = () => {
     Alert.alert('Version Check', 'In a real app, this would trigger a background version check');
   };
 
@@ -65,7 +52,8 @@ export default function App() {
         <View style={styles.header}>
           <Text style={styles.title}>SideKit React Native</Text>
           <Text style={styles.subtitle}>Example App</Text>
-          <Text style={styles.version}>v1.0.0</Text>
+          {/* When testing with Expo, this will be the version of the Expo Go app */}
+          <Text style={styles.version}>{Application.nativeApplicationVersion}</Text>
         </View>
 
         {/* Configuration Section */}
@@ -73,8 +61,8 @@ export default function App() {
           <Text style={styles.sectionTitle}>Configuration</Text>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Status:</Text>
-            <Text style={configured ? styles.valueSuccess : styles.valueError}>
-              {configured ? 'Configured ✓' : 'Not Configured'}
+            <Text style={styles.valueSuccess}>
+              Configured ✓
             </Text>
           </View>
           <View style={styles.infoRow}>
@@ -83,11 +71,12 @@ export default function App() {
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>API Key:</Text>
-            <Text style={styles.value}>{apiKey}</Text>
+            <Text style={styles.value}>abc</Text>
           </View>
-          <TouchableOpacity style={styles.button} onPress={initializeSDK}>
-            <Text style={styles.buttonText}>Re-initialize SDK</Text>
-          </TouchableOpacity>
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Mode:</Text>
+            <Text style={styles.value}>Automatic</Text>
+          </View>
         </View>
 
         {/* Version Gate Status */}
@@ -170,15 +159,16 @@ export default function App() {
           </Text>
         </View>
       </ScrollView>
-
-      {/* Version Gate Modal (automatic presentation) */}
-      <DefaultVersionGate
-        onSkip={() => {
-          console.log('User skipped update');
-          Alert.alert('Update Skipped', 'You can update later from the app settings');
-        }}
-      />
     </View>
+  );
+}
+
+export default function App() {
+  return (
+    <SideKitProvider apiKey="abc" verbose={true} presentationMode="manual">
+      <AppContent />
+      <CustomVersionGate />
+    </SideKitProvider>
   );
 }
 

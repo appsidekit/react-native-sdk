@@ -233,9 +233,11 @@ describe('SideKit', () => {
   describe('version compliance', () => {
     it('should show forced update gate', async () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Forced,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: { version: '2.0.0', type: VersionGateType.Forced },
-        blockedVersions: [],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update required',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
       const mockSettingsStore = {
@@ -269,9 +271,11 @@ describe('SideKit', () => {
 
     it('should not show gate for compliant version', async () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Live,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: { version: '1.0.0', type: VersionGateType.Forced },
-        blockedVersions: [],
+        latestVersion: null,
+        whatsNew: null,
+        storeUrl: null,
       });
 
       const mockSettingsStore = {
@@ -306,10 +310,11 @@ describe('SideKit', () => {
   describe('dismissUpdateGate', () => {
     it('should dismiss dismissable gate', async () => {
       const gateInfo = new GateInformation({
+        gateType: VersionGateType.Dismissable,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        blockedVersions: [
-          { version: '1.0.0', type: VersionGateType.Dismissable },
-        ],
+        latestVersion: '2.0.0',
+        whatsNew: 'Update available',
+        storeUrl: 'https://apps.apple.com/app/123',
       });
 
       const mockSettingsStore = {

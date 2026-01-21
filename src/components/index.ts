@@ -5,4 +5,4 @@
  */
 
 export { DefaultVersionGate } from './DefaultVersionGate';
-export type { DefaultVersionGateProps } from './DefaultVersionGate';
+export { SideKitProvider, type SideKitProviderProps } from './SideKitProvider';

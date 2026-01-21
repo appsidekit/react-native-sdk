@@ -15,12 +15,11 @@ describe('AnalyticsAgent', () => {
   describe('getGateInformation', () => {
     it('should fetch gate information successfully', async () => {
       const mockGateData = {
+        gateType: VersionGateType.Forced,
         lastGateUpdate: '2026-01-01T00:00:00Z',
-        minVersion: { version: '2.0.0', type: VersionGateType.Forced },
-        blockedVersions: [],
         latestVersion: '2.1.0',
         whatsNew: 'Bug fixes',
-        appStoreURL: 'https://apps.apple.com/app/123',
+        storeUrl: 'https://apps.apple.com/app/123',
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -34,9 +33,9 @@ describe('AnalyticsAgent', () => {
       expect(gateInfo?.lastGateUpdate).toBe('2026-01-01T00:00:00Z');
       expect(gateInfo?.latestVersion).toBe('2.1.0');
 
-      // Verify request
+      // Verify request includes storeType and appVersion parameters
       expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.appsidekit.com/v1/version',
+        expect.stringMatching(/https:\/\/api\.appsidekit\.com\/v1\/version\?storeType=[01]&appVersion=.+/),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
@@ -70,8 +69,11 @@ describe('AnalyticsAgent', () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({
+          gateType: VersionGateType.Live,
           lastGateUpdate: '2026-01-01T00:00:00Z',
-          blockedVersions: [],
+          latestVersion: null,
+          whatsNew: null,
+          storeUrl: null,
         }),
       });
 
