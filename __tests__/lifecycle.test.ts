@@ -4,6 +4,11 @@ import { AppState } from 'react-native';
 describe('lifecycle', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('should subscribe to app state changes', () => {
@@ -46,6 +51,7 @@ describe('lifecycle', () => {
     unsubscribe1();
     unsubscribe2();
   });
+
 
   describe('getCurrentAppState', () => {
     it('should return current app state', () => {

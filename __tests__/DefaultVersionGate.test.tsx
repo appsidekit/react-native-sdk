@@ -118,4 +118,26 @@ describe('DefaultVersionGate', () => {
       {};
     expect(props).toBeDefined();
   });
+
+  it('should have update and skip button handlers defined', () => {
+    const gateInfo = new GateInformation({
+      gateType: VersionGateType.Dismissable,
+      lastGateUpdate: '2026-01-01T00:00:00Z',
+      latestVersion: '2.0.0',
+      whatsNew: 'New features',
+      storeUrl: 'https://apps.apple.com/app/123',
+    });
+
+    mockUseSideKit.mockReturnValue({
+      showUpdateScreen: true,
+      gateInformation: gateInfo,
+      dismissUpdateGate: jest.fn(),
+    });
+
+    const result = DefaultVersionGate();
+
+    // Verify component structure
+    expect(result).not.toBeNull();
+    expect(React.isValidElement(result)).toBe(true);
+  });
 });

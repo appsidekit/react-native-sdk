@@ -164,4 +164,70 @@ describe('SettingsStore', () => {
       ]);
     });
   });
+
+  describe('error handling', () => {
+    it('should handle AsyncStorage.getItem errors gracefully', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockRejectedValue(
+        new Error('Storage error')
+      );
+
+      store = new SettingsStore();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Should default to true when error occurs
+      const enabled = await store.isAnalyticsEnabled();
+      expect(enabled).toBe(true);
+    });
+
+    it('should handle setAnalyticsEnabled errors gracefully', async () => {
+      (AsyncStorage.setItem as jest.Mock).mockRejectedValue(
+        new Error('Storage error')
+      );
+
+      await expect(store.setAnalyticsEnabled(false)).resolves.not.toThrow();
+    });
+
+    it('should handle markLaunched errors gracefully', async () => {
+      (AsyncStorage.setItem as jest.Mock).mockRejectedValue(
+        new Error('Storage error')
+      );
+
+      await expect(store.markLaunched()).resolves.not.toThrow();
+    });
+
+    it('should handle setCachedGateInformation errors gracefully', async () => {
+      (AsyncStorage.setItem as jest.Mock).mockRejectedValue(
+        new Error('Storage error')
+      );
+
+      const gateInfo = new GateInformation({
+        gateType: VersionGateType.Live,
+        lastGateUpdate: '2026-01-01T00:00:00Z',
+        latestVersion: null,
+        whatsNew: null,
+        storeUrl: null,
+      });
+
+      await expect(
+        store.setCachedGateInformation(gateInfo)
+      ).resolves.not.toThrow();
+    });
+
+    it('should handle clear errors gracefully', async () => {
+      (AsyncStorage.multiRemove as jest.Mock).mockRejectedValue(
+        new Error('Storage error')
+      );
+
+      await expect(store.clear()).resolves.not.toThrow();
+    });
+
+    it('should handle getCachedGateInformation AsyncStorage errors', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockRejectedValue(
+        new Error('Storage error')
+      );
+
+      const gateInfo = await store.getCachedGateInformation();
+      expect(gateInfo).toBeNull();
+    });
+  });
 });
