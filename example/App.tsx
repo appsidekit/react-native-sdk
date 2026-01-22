@@ -11,7 +11,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import * as Application from 'expo-application';
 import { useSideKit, SideKitProvider } from '@sidekit/react-native';
-import { CustomVersionGate } from './CustomVersionGate';
+import { SIDEKIT_API_KEY } from '@env';
 
 function AppContent() {
   const {
@@ -23,12 +23,12 @@ function AppContent() {
   } = useSideKit();
 
   const handleTrackEvent = () => {
-    sendSignal('ABC');
+    sendSignal('button_clicked');
     Alert.alert('Success', 'Event tracked: button_clicked');
   };
 
   const handleTrackEventWithValue = () => {
-    sendSignal('ABC', 'home_screen');
+    sendSignal('page_viewed', 'home_screen');
     Alert.alert('Success', 'Event tracked: page_viewed = home_screen');
   };
 
@@ -71,7 +71,7 @@ function AppContent() {
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>API Key:</Text>
-            <Text style={styles.value}>abc</Text>
+            <Text style={styles.value}>{SIDEKIT_API_KEY}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Mode:</Text>
@@ -165,9 +165,8 @@ function AppContent() {
 
 export default function App() {
   return (
-    <SideKitProvider apiKey="abc" verbose={true} presentationMode="manual">
+    <SideKitProvider apiKey={SIDEKIT_API_KEY} verbose={true}>
       <AppContent />
-      <CustomVersionGate />
     </SideKitProvider>
   );
 }
