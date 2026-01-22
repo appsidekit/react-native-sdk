@@ -1,16 +1,11 @@
 # SideKit React Native Example App
 
-This example app demonstrates all features of the SideKit React Native SDK.
+This example app demonstrates all features of the SideKit React Native SDK:
 
-## Features Demonstrated
-
-- ✅ SDK Configuration
-- ✅ Version Gate (Automatic Presentation)
-- ✅ Version Gate (Manual Presentation with Custom UI)
-- ✅ Analytics Event Tracking
-- ✅ Analytics Opt-in/Opt-out
-- ✅ Real-time State Updates via `useSideKit()` hook
-- ✅ Custom UI with DefaultVersionGate component
+- SDK Configuration
+- Version Gating (automatic presentation & manual presentation with custom UI)
+- Analytics Event Tracking
+- Analytics Opt-in/Opt-out
 
 ## Getting Started
 
@@ -64,16 +59,14 @@ To test version gates, you'll need to:
 
 The example app includes a `CustomVersionGate.tsx` component that demonstrates how to build a custom version gate UI for manual presentation mode.
 
-To test manual presentation mode, open `App.tsx` and update the SideKitProvider configuration to use manual presentation:
+To test manual presentation mode, open `App.tsx` and update SideKitProvider to use manual presentation:
 
 ```tsx
 import { CustomVersionGate } from './CustomVersionGate';
 
 <SideKitProvider
-  config={{
-    apiKey: 'your-api-key',
-    presentationMode: 'manual', // Change from 'automatic' to 'manual'
-  }}
+  apiKey='your-api-key'
+  presentationMode='manual' // Change from 'automatic' to 'manual'
 >
   <YourAppContent />
   <CustomVersionGate /> {/* Add the custom gate component */}
@@ -82,7 +75,7 @@ import { CustomVersionGate } from './CustomVersionGate';
 
 ### Debugging
 
-Enable verbose logging by setting `verbose: true` in the SDK configuration. Check the console for detailed logs.
+Enable verbose logging by setting `verbose=true` in the SDK configuration. Check the console for detailed logs.
 
 ## Learn More
 

@@ -20,8 +20,8 @@ By participating in this project, you agree to abide by our Code of Conduct. Ple
 1. Fork the repository on GitHub
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/sidekit-react-native.git
-   cd sidekit-react-native
+   git clone https://github.com/YOUR_USERNAME/react-native-sdk.git
+   cd react-native-sdk
    ```
 
 3. Install dependencies:
@@ -206,7 +206,7 @@ describe('SemanticVersion', () => {
 
 ### Integration Tests
 
-Test SDK integration with example app to ensure real-world functionality.
+Test SDK integration with the example app to ensure real-world functionality.
 
 ## Documentation
 
@@ -261,4 +261,4 @@ If you have questions about contributing:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
