@@ -41,7 +41,13 @@ jest.mock('expo-application', () => ({
 
 // Mock Expo Device
 jest.mock('expo-device', () => ({
+  osVersion: '17.0',
   modelName: 'iPhone 15',
+}));
+
+// Mock Expo Linear Gradient
+jest.mock('expo-linear-gradient', () => ({
+  LinearGradient: 'LinearGradient',
 }));
 
 // Mock fetch

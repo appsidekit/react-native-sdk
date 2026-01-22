@@ -35,8 +35,17 @@ export function getPlatform(): 'ios' | 'android' | null {
  * @returns OS version string
  */
 export function getOSVersion(): string {
-  const version = Platform.Version;
-  return String(version);
+  const version = Device.osVersion;
+  let os = '';
+  switch (getPlatform()) {
+    case 'ios':
+      os = 'iOS ';
+      break;
+    case 'android':
+      os = 'Android ';
+      break;
+  }
+  return `${os}${version}`;
 }
 
 /**

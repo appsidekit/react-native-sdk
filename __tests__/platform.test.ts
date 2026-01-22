@@ -34,17 +34,10 @@ describe('platform', () => {
 
   describe('getOSVersion', () => {
     it('should return OS version as string', () => {
-      (Platform as any).Version = '17.0';
+      (Platform as any).OS = 'android';
       const version = getOSVersion();
       expect(typeof version).toBe('string');
-      expect(version).toBe('17.0');
-    });
-
-    it('should handle numeric version', () => {
-      (Platform as any).Version = 33;
-      const version = getOSVersion();
-      expect(typeof version).toBe('string');
-      expect(version).toBe('33');
+      expect(version).toBe('Android 17.0');
     });
   });
 
