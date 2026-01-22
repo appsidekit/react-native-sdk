@@ -34,8 +34,5 @@ yarn-error.log*
 .env.local
 .env.*.local
 
-# Plan
-plan/
-
 # Misc
 *.tgz
