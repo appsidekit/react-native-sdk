@@ -64,13 +64,20 @@ const { showUpdateScreen, gateInformation } = useSideKit();
 Send signals to track important events in your app:
 
 ```ts
-const { sendSignal } = useSideKit();
+const { sendSignal, sendSignals } = useSideKit();
 
 // Send a simple signal
 sendSignal("user_signed_up")
 
 // Send a signal with a value
-sendSignal(key: "purchase", value: "pro_plan")
+sendSignal("purchase", "pro_plan")
+
+// Send multiple signals at once (more efficient)
+sendSignals([
+  { key: "page_view", value: "home" },
+  { key: "button_clicked", value: "signup" },
+  { key: "feature_used", value: "dark_mode" }
+])
 ```
 
 ### 4. Analytics Opt-Out

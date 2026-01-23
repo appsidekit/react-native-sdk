@@ -108,6 +108,29 @@ export interface SideKitState {
    */
   sendSignal: (key: string, value?: string) => void;
 
+  /**
+   * Track multiple custom analytics events at once.
+   *
+   * Sends multiple signals to the SideKit API with automatic metadata enrichment.
+   * This is more efficient than calling sendSignal multiple times as it batches
+   * the events into a single API request.
+   *
+   * @param {Array<{key: string, value?: string}>} signals - Array of signals to send
+   *
+   * @returns {void}
+   *
+   * @example
+   * ```typescript
+   * // Send multiple signals at once
+   * sendSignals([
+   *   { key: 'page_view', value: 'home' },
+   *   { key: 'button_clicked', value: 'signup' },
+   *   { key: 'feature_used', value: 'dark_mode' }
+   * ]);
+   * ```
+   */
+  sendSignals: (signals: Array<{ key: string; value?: string }>) => void;
+
   /** Dismiss the update gate (for dismissable gates only) */
   dismissUpdateGate: () => void;
 

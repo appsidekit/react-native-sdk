@@ -25,6 +25,7 @@ export { SideKitProvider, type SideKitProviderProps } from './components';
  *   - gateInformation: Current gate configuration from the API
  *   - isAnalyticsEnabled: Whether analytics tracking is enabled
  *   - sendSignal: Send a custom analytics event
+ *   - sendSignals: Send multiple custom analytics events at once
  *   - dismissUpdateGate: Dismiss the update gate (for dismissable gates)
  *   - setAnalyticsEnabled: Enable or disable analytics tracking
  *
@@ -84,8 +85,15 @@ export function useSideKit(): SideKitState {
 
   // Memoize methods to prevent unnecessary re-renders
   const sendSignal = useCallback((key: string, value?: string) => {
-    SideKit.shared.sendSignal(key, value);
+    SideKit.shared.sendSignals([{ key, value }]);
   }, []);
+
+  const sendSignals = useCallback(
+    (signals: Array<{ key: string; value?: string }>) => {
+      SideKit.shared.sendSignals(signals);
+    },
+    []
+  );
 
   const dismissUpdateGate = useCallback(() => {
     SideKit.shared.dismissUpdateGate();
@@ -98,6 +106,7 @@ export function useSideKit(): SideKitState {
   return {
     ...state,
     sendSignal,
+    sendSignals,
     dismissUpdateGate,
     setAnalyticsEnabled,
   };

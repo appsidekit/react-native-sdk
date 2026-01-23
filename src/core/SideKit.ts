@@ -100,7 +100,7 @@ export class SideKit {
 
     // Send first launch signal after configuration is complete
     if (isFirstLaunch) {
-      this.sendSignal('_first_launch');
+      this.sendSignals([{ key: '_first_launch' }]);
       await this.settingsStore.markLaunched();
     }
 
@@ -108,22 +108,22 @@ export class SideKit {
     await this.checkVersionCompliance();
 
     // Send app open signal
-    this.sendSignal('_app_open');
+    this.sendSignals([{ key: '_app_open' }]);
 
     log('SDK configuration complete');
   }
 
   /**
-   * Send a custom analytics event.
+   * Send custom analytics events.
    */
-  sendSignal(key: string, value?: string): void {
+  sendSignals(signals: Array<{ key: string; value?: string }>): void {
     if (!this.isConfigured) {
       error('SDK not configured. Call configure() first.');
       return;
     }
 
     if (!this._isAnalyticsEnabled) {
-      log(`Analytics disabled, skipping signal: ${key}`);
+      log(`Analytics disabled, skipping ${signals.length} signal(s)`);
       return;
     }
 
@@ -132,12 +132,17 @@ export class SideKit {
       return;
     }
 
-    const signal = new Signal(key, value || '');
-    log(`Sending signal: ${key}${value ? ` = ${value}` : ''}`);
+    const signalObjects = signals.map(
+      (s) => new Signal(s.key, s.value || '').toJSON()
+    );
 
-    // Send signal asynchronously (fire and forget)
-    this.analyticsAgent.sendSignals([signal.toJSON()]).catch((err) => {
-      error('Failed to send signal', err);
+    signals.forEach((s) => {
+      log(`Sending signal: ${s.key}${s.value ? ` = ${s.value}` : ''}`);
+    });
+
+    // Send signals asynchronously (fire and forget)
+    this.analyticsAgent.sendSignals(signalObjects).catch((err) => {
+      error('Failed to send signals', err);
     });
   }
 
@@ -204,7 +209,7 @@ export class SideKit {
     }
 
     log('App foregrounded');
-    this.sendSignal('_app_open');
+    this.sendSignals([{ key: '_app_open' }]);
     this.checkVersionCompliance().catch((err) => {
       error('Version compliance check failed', err);
     });
@@ -289,7 +294,9 @@ export class SideKit {
     this.notifyListeners();
 
     // Send _gate_enforced signal
-    this.sendSignal('_gate_enforced', getAppVersion() || undefined);
+    this.sendSignals([
+      { key: '_gate_enforced', value: getAppVersion() || undefined },
+    ]);
 
     // Cache gate information
     if (this.settingsStore) {

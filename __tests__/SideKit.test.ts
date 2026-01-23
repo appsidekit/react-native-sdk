@@ -76,7 +76,7 @@ describe('SideKit', () => {
     });
   });
 
-  describe('sendSignal', () => {
+  describe('sendSignals', () => {
     beforeEach(async () => {
       const mockSettingsStore = {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
@@ -102,8 +102,8 @@ describe('SideKit', () => {
       await sideKit.configure('test-api-key');
     });
 
-    it('should send signal with key only', () => {
-      sideKit.sendSignal('button_clicked');
+    it('should send single signal with key only', () => {
+      sideKit.sendSignals([{ key: 'button_clicked' }]);
 
       const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
         .value;
@@ -114,8 +114,8 @@ describe('SideKit', () => {
       );
     });
 
-    it('should send signal with key and value', () => {
-      sideKit.sendSignal('button_clicked', 'signup');
+    it('should send single signal with key and value', () => {
+      sideKit.sendSignals([{ key: 'button_clicked', value: 'signup' }]);
 
       const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
         .value;
@@ -129,9 +129,27 @@ describe('SideKit', () => {
       );
     });
 
-    it('should not send signal if analytics is disabled', () => {
+    it('should send multiple signals at once', () => {
+      sideKit.sendSignals([
+        { key: 'page_view', value: 'home' },
+        { key: 'button_clicked', value: 'signup' },
+        { key: 'feature_used' },
+      ]);
+
+      const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
+        .value;
+      expect(mockInstance.sendSignals).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'page_view', value: 'home' }),
+          expect.objectContaining({ name: 'button_clicked', value: 'signup' }),
+          expect.objectContaining({ name: 'feature_used' }),
+        ])
+      );
+    });
+
+    it('should not send signals if analytics is disabled', () => {
       sideKit.isAnalyticsEnabled = false;
-      sideKit.sendSignal('test_event');
+      sideKit.sendSignals([{ key: 'test_event' }]);
 
       const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
         .value;
@@ -143,6 +161,14 @@ describe('SideKit', () => {
         call[0].some((signal: any) => signal.name === 'test_event')
       );
       expect(hasTestEvent).toBe(false);
+    });
+
+    it('should handle empty signals array', () => {
+      sideKit.sendSignals([]);
+
+      const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
+        .value;
+      expect(mockInstance.sendSignals).toHaveBeenCalledWith([]);
     });
   });
 
@@ -425,9 +451,9 @@ describe('SideKit', () => {
     });
   });
 
-  describe('sendSignal', () => {
-    it('should handle sendSignal when not configured', () => {
-      const result = sideKit.sendSignal('test_event');
+  describe('sendSignals when not configured', () => {
+    it('should handle sendSignals when not configured', () => {
+      const result = sideKit.sendSignals([{ key: 'test_event' }]);
       expect(result).toBeUndefined();
     });
   });
@@ -673,7 +699,7 @@ describe('SideKit', () => {
     });
   });
 
-  describe('error handling in sendSignal', () => {
+  describe('error handling in sendSignals', () => {
     it('should handle sendSignals rejection', async () => {
       const mockSettingsStore = {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
@@ -696,8 +722,8 @@ describe('SideKit', () => {
 
       await sideKit.configure('test-api-key');
 
-      // Send signal that will fail
-      sideKit.sendSignal('test_event');
+      // Send signals that will fail
+      sideKit.sendSignals([{ key: 'test_event' }]);
 
       // Wait for async rejection
       await new Promise((resolve) => setTimeout(resolve, 10));
