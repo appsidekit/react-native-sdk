@@ -1,6 +1,6 @@
 {
   "name": "@sidekit/react-native",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "SideKit React Native SDK for version gating and analytics",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
