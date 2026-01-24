@@ -32,7 +32,7 @@ export enum VersionGateType {
   /** User must update (no skip button) */
   Forced = 0,
   /** User can skip update */
-  Dismissable = 1,
+  Dismissible = 1,
   /** Modal presentation */
   Modal = 2,
 }
@@ -131,7 +131,7 @@ export interface SideKitState {
    */
   sendSignals: (signals: Array<{ key: string; value?: string }>) => void;
 
-  /** Dismiss the update gate (for dismissable gates only) */
+  /** Dismiss the update gate (for dismissible gates only) */
   dismissUpdateGate: () => void;
 
   /**

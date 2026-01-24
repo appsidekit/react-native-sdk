@@ -19,9 +19,9 @@ describe('GateInformation', () => {
       expect(gateInfo.isBlocked()).toBe(true);
     });
 
-    it('should return true when gateType is Dismissable', () => {
+    it('should return true when gateType is Dismissible', () => {
       const gateInfo = new GateInformation({
-        gateType: VersionGateType.Dismissable,
+        gateType: VersionGateType.Dismissible,
         lastGateUpdate: '2026-01-01T00:00:00Z',
         latestVersion: '2.0.0',
         whatsNew: 'Update available',
@@ -69,16 +69,16 @@ describe('GateInformation', () => {
       expect(gateInfo.blockingGateType()).toBe(VersionGateType.Forced);
     });
 
-    it('should return Dismissable when gateType is Dismissable', () => {
+    it('should return Dismissible when gateType is Dismissible', () => {
       const gateInfo = new GateInformation({
-        gateType: VersionGateType.Dismissable,
+        gateType: VersionGateType.Dismissible,
         lastGateUpdate: '2026-01-01T00:00:00Z',
         latestVersion: '2.0.0',
         whatsNew: 'Update available',
         storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      expect(gateInfo.blockingGateType()).toBe(VersionGateType.Dismissable);
+      expect(gateInfo.blockingGateType()).toBe(VersionGateType.Dismissible);
     });
 
     it('should return Modal when gateType is Modal', () => {
@@ -106,17 +106,17 @@ describe('GateInformation', () => {
     });
   });
 
-  describe('isDismissable', () => {
-    it('should return true for Dismissable gate type', () => {
+  describe('isDismissible', () => {
+    it('should return true for Dismissible gate type', () => {
       const gateInfo = new GateInformation({
-        gateType: VersionGateType.Dismissable,
+        gateType: VersionGateType.Dismissible,
         lastGateUpdate: '2026-01-01T00:00:00Z',
         latestVersion: '2.0.0',
         whatsNew: 'Update available',
         storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      expect(gateInfo.isDismissable()).toBe(true);
+      expect(gateInfo.isDismissible()).toBe(true);
     });
 
     it('should return true for Modal gate type', () => {
@@ -128,7 +128,7 @@ describe('GateInformation', () => {
         storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      expect(gateInfo.isDismissable()).toBe(true);
+      expect(gateInfo.isDismissible()).toBe(true);
     });
 
     it('should return false for Forced gate type', () => {
@@ -140,7 +140,7 @@ describe('GateInformation', () => {
         storeUrl: 'https://apps.apple.com/app/123',
       });
 
-      expect(gateInfo.isDismissable()).toBe(false);
+      expect(gateInfo.isDismissible()).toBe(false);
     });
 
     it('should return false for Live gate type', () => {
@@ -152,7 +152,7 @@ describe('GateInformation', () => {
         storeUrl: null,
       });
 
-      expect(gateInfo.isDismissable()).toBe(false);
+      expect(gateInfo.isDismissible()).toBe(false);
     });
   });
 
@@ -169,9 +169,9 @@ describe('GateInformation', () => {
       expect(gateInfo.isForced()).toBe(true);
     });
 
-    it('should return false for Dismissable gate type', () => {
+    it('should return false for Dismissible gate type', () => {
       const gateInfo = new GateInformation({
-        gateType: VersionGateType.Dismissable,
+        gateType: VersionGateType.Dismissible,
         lastGateUpdate: '2026-01-01T00:00:00Z',
         latestVersion: '2.0.0',
         whatsNew: 'Update available',

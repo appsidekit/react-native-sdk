@@ -273,12 +273,12 @@ export class SideKit {
       log('Showing forced update gate');
       this.showGate(gateInfo);
     } else if (isNewGate) {
-      // Dismissable/modal gates: show only if new
-      log('Showing dismissable/modal update gate (new gate)');
+      // Dismissible/modal gates: show only if new
+      log('Showing dismissible/modal update gate (new gate)');
       this.showGate(gateInfo);
     } else {
-      // Already shown this dismissable gate, don't show again
-      log('Dismissable gate already shown, skipping');
+      // Already shown this dismissible gate, don't show again
+      log('Dismissible gate already shown, skipping');
       this.showUpdateScreen = false;
       this.gateInformation = gateInfo;
       this.notifyListeners();
@@ -329,7 +329,7 @@ export class SideKit {
   }
 
   /**
-   * Manually dismiss the update gate (for dismissable gates)
+   * Manually dismiss the update gate (for dismissible gates)
    */
   dismissUpdateGate(): void {
     if (!this.isConfigured) {
@@ -342,9 +342,9 @@ export class SideKit {
       return;
     }
 
-    // Only allow dismissing dismissable/modal gates
+    // Only allow dismissing dismissible/modal gates
     if (this.gateInformation) {
-      if (this.gateInformation.isDismissable()) {
+      if (this.gateInformation.isDismissible()) {
         log('Dismissing update gate');
         this.showUpdateScreen = false;
         this.notifyListeners();

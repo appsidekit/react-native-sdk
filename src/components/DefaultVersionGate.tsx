@@ -44,7 +44,7 @@ export function DefaultVersionGate(): JSX.Element | null {
     return null;
   }
 
-  const isDismissable = gateInformation.isDismissable();
+  const isDismissible = gateInformation.isDismissible();
 
   const handleUpdate = async () => {
     const storeURL = gateInformation.storeUrl;
@@ -112,8 +112,8 @@ export function DefaultVersionGate(): JSX.Element | null {
             <Text style={styles.primaryButtonText}>Get the Update</Text>
           </TouchableOpacity>
 
-          {/* Secondary Button (only for dismissable gates) */}
-          {isDismissable && (
+          {/* Secondary Button (only for dismissible gates) */}
+          {isDismissible && (
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={handleSkip}

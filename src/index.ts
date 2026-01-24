@@ -26,7 +26,7 @@ export { SideKitProvider, type SideKitProviderProps } from './components';
  *   - isAnalyticsEnabled: Whether analytics tracking is enabled
  *   - sendSignal: Send a custom analytics event
  *   - sendSignals: Send multiple custom analytics events at once
- *   - dismissUpdateGate: Dismiss the update gate (for dismissable gates)
+ *   - dismissUpdateGate: Dismiss the update gate (for dismissible gates)
  *   - setAnalyticsEnabled: Enable or disable analytics tracking
  *
  * @example

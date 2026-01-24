@@ -8,6 +8,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
+  "overrides": {
+    "glob": "^9.0.0"
+  },
   "dependencies": {
     "@sidekit/react-native": "file:..",
     "expo": "~54.0.0",

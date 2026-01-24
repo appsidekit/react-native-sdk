@@ -334,9 +334,9 @@ describe('SideKit', () => {
   });
 
   describe('dismissUpdateGate', () => {
-    it('should dismiss dismissable gate', async () => {
+    it('should dismiss dismissible gate', async () => {
       const gateInfo = new GateInformation({
-        gateType: VersionGateType.Dismissable,
+        gateType: VersionGateType.Dismissible,
         lastGateUpdate: '2026-01-01T00:00:00Z',
         latestVersion: '2.0.0',
         whatsNew: 'Update available',

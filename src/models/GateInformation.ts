@@ -53,18 +53,18 @@ export class GateInformation {
   }
 
   /**
-   * Check if the gate is dismissable for the current app version
-   * @returns true if gate is dismissable
+   * Check if the gate is dismissible for the current app version
+   * @returns true if gate is dismissible
    */
-  isDismissable(): boolean {
+  isDismissible(): boolean {
     return (
-      this.gateType === VersionGateType.Dismissable ||
+      this.gateType === VersionGateType.Dismissible ||
       this.gateType === VersionGateType.Modal
     );
   }
 
   /**
-   * Check if the gate is forced (non-dismissable) for the current app version
+   * Check if the gate is forced (non-dismissible) for the current app version
    * @returns true if gate is forced
    */
   isForced(): boolean {

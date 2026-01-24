@@ -84,7 +84,7 @@ export class AnalyticsAgent {
   async sendSignals(signals: Array<{ name: string; value: string }>): Promise<void> {
     try {
       const metadata = {
-        osVersion: getOSVersion(),
+        osVersion: getOSVersion() || undefined,
         appVersion: getAppVersion() || undefined,
         country: getCountryCode() || undefined,
         language: getLanguageCode() || undefined,

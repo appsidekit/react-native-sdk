@@ -69,9 +69,9 @@ describe('DefaultVersionGate', () => {
     expect(React.isValidElement(result)).toBe(true);
   });
 
-  it('should determine dismissable state from API gate information', () => {
+  it('should determine dismissible state from API gate information', () => {
     const gateInfo = new GateInformation({
-      gateType: VersionGateType.Dismissable,
+      gateType: VersionGateType.Dismissible,
       lastGateUpdate: '2026-01-01T00:00:00Z',
       latestVersion: '2.0.0',
       whatsNew: 'New features',
@@ -121,7 +121,7 @@ describe('DefaultVersionGate', () => {
 
   it('should have update and skip button handlers defined', () => {
     const gateInfo = new GateInformation({
-      gateType: VersionGateType.Dismissable,
+      gateType: VersionGateType.Dismissible,
       lastGateUpdate: '2026-01-01T00:00:00Z',
       latestVersion: '2.0.0',
       whatsNew: 'New features',
