@@ -1,15 +1,15 @@
-import { AnalyticsAgent } from '../src/core/AnalyticsAgent';
+import { Meerkat } from '../src/core/Meerkat';
 import { VersionGateType } from '../src/types';
 
 // Mock fetch
 global.fetch = jest.fn();
 
-describe('AnalyticsAgent', () => {
-  let agent: AnalyticsAgent;
+describe('Meerkat', () => {
+  let agent: Meerkat;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    agent = new AnalyticsAgent('test-api-key');
+    agent = new Meerkat('test-api-key');
   });
 
   describe('getGateInformation', () => {
@@ -177,6 +177,56 @@ describe('AnalyticsAgent', () => {
       await agent.sendSignals([]);
 
       expect(global.fetch).toHaveBeenCalled();
+    });
+  });
+
+  describe('getFlags', () => {
+    it('should fetch flags successfully', async () => {
+      const mockFlags = [
+        { key: 'dark_mode', value: true, isFlag: true, updatedAt: '2026-01-01T00:00:00Z' },
+        { key: 'welcome_msg', value: 'Hi', isFlag: false, updatedAt: '2026-01-01T00:00:00Z' },
+      ];
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockFlags,
+      });
+
+      const flags = await agent.getFlags();
+
+      expect(flags).toEqual(mockFlags);
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.appsidekit.com/v1/flags',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ 'API-Key': 'test-api-key' }),
+        })
+      );
+    });
+
+    it('should return null on API error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      });
+
+      await expect(agent.getFlags()).resolves.toBeNull();
+    });
+
+    it('should return null on network error', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+      await expect(agent.getFlags()).resolves.toBeNull();
+    });
+
+    it('should return null when response is not an array', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({ unexpected: 'shape' }),
+      });
+
+      await expect(agent.getFlags()).resolves.toBeNull();
     });
   });
 

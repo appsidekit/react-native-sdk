@@ -13,6 +13,8 @@ SideKit is a lightweight React Native SDK that provides seamless version gating 
 
 - **Version Gating**: Remotely force updates or suggest new versions to your users.
 - **Analytics Signals**: Send custom events (signals) to track user behavior and app health.
+- **Feature Flags & Config**: Remotely toggle features and push config values without shipping an update.
+- **User Feedback**: Collect in-app feedback with automatic device/locale metadata.
 - **End-User Auth**: Sign users in with a phone number + OTP; sessions persist across launches.
 - **Automatic Presentation**: Out-of-the-box UI for update prompts that works for both iOS and Android.
 - **Built for Expo**: First-class Expo support (uses Expo modules for device info and secure storage)
@@ -96,7 +98,43 @@ const { isAnalyticsEnabled, setAnalyticsEnabled } = useSideKit();
 
 The preference is automatically persisted across app launches.
 
-### 5. End-User Authentication
+### 5. Feature Flags & Config
+
+Remotely toggle features and push config values from the SideKit dashboard. Flags are fetched on `configure()` and cached for offline use; call `refreshFlags()` to pull the latest at any time.
+
+```ts
+const { flag, config, flags, refreshFlags } = useSideKit();
+
+// Boolean feature flag (defaults to false if missing)
+if (flag("new_onboarding")) {
+  // show the new onboarding flow
+}
+
+// String config value (defaults to "" if missing)
+const banner = config("home_banner_text", "Welcome!");
+
+// Pull the latest flags on demand (e.g. on a screen focus)
+await refreshFlags();
+```
+
+`flags` is the full array of `FeatureFlag` entries (`{ key, value, isFlag, updatedAt }`) if you need to enumerate them. The SDK caches the last-known flags, so `flag()`/`config()` keep working when the device is offline.
+
+### 6. User Feedback
+
+Collect in-app feedback. Device metadata (OS, app version, device model, country, language, platform) is attached automatically, and when a user is signed in the feedback is attributed to them.
+
+```ts
+const { sendFeedback } = useSideKit();
+
+const ok = await sendFeedback("Love the app! Could use dark mode.", {
+  userAttributes: { screen: "settings", plan: "pro" },
+});
+if (ok) showThankYou();
+```
+
+`sendFeedback` resolves to `true` when the feedback was accepted, `false` otherwise (it never throws). Feedback is sent regardless of the analytics opt-out setting.
+
+### 7. End-User Authentication
 
 Sign your users in with their phone number via a one-time passcode (OTP). The session is persisted across app launches, so a returning user stays signed in. Requires your app to be enabled for end-user auth.
 

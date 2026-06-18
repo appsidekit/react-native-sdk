@@ -8,13 +8,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { GateInformation } from '../models/GateInformation';
 import { log, error } from '../utils/logger';
-import type { AuthUser } from '../types';
+import type { AuthUser, FeatureFlag } from '../types';
 
 // Storage keys
 const KEYS = {
   ANALYTICS_ENABLED: 'sk_analytics_enabled',
   FIRST_LAUNCH: 'sk_first_launch',
   CACHED_GATE: 'sk_cached_gate_information',
+  CACHED_FLAGS: 'sk_cached_flags',
   AUTH_SESSION: 'sk_auth_session',
 };
 
@@ -201,6 +202,41 @@ export class SettingsStore {
   }
 
   /**
+   * Get cached feature flags, or null if none are stored or they're unparseable.
+   */
+  async getCachedFlags(): Promise<FeatureFlag[] | null> {
+    if (this.cache.has(KEYS.CACHED_FLAGS)) {
+      return this.cache.get(KEYS.CACHED_FLAGS);
+    }
+
+    try {
+      const value = await this.getItem(KEYS.CACHED_FLAGS);
+      if (value) {
+        const flags = JSON.parse(value) as FeatureFlag[];
+        this.cache.set(KEYS.CACHED_FLAGS, flags);
+        return flags;
+      }
+    } catch (err) {
+      error('Failed to parse cached flags', err);
+    }
+
+    return null;
+  }
+
+  /**
+   * Cache feature flags for offline fallback.
+   */
+  async setCachedFlags(flags: FeatureFlag[]): Promise<void> {
+    this.cache.set(KEYS.CACHED_FLAGS, flags);
+    try {
+      await this.setItem(KEYS.CACHED_FLAGS, JSON.stringify(flags));
+      log(`Cached ${flags.length} feature flag(s)`);
+    } catch (err) {
+      error('Failed to cache flags', err);
+    }
+  }
+
+  /**
    * Get the persisted end-user session, or null if none is stored or it's unparseable.
    * Expiry is the caller's concern (SideKit drops expired sessions on load).
    */
@@ -265,6 +301,7 @@ export class SettingsStore {
           KEYS.ANALYTICS_ENABLED,
           KEYS.FIRST_LAUNCH,
           KEYS.CACHED_GATE,
+          KEYS.CACHED_FLAGS,
         ]);
         log('Cleared all cached data');
       } catch (err) {

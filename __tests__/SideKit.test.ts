@@ -1,13 +1,13 @@
 import { SideKit } from '../src/core/SideKit';
 import { SettingsStore } from '../src/core/SettingsStore';
-import { AnalyticsAgent } from '../src/core/AnalyticsAgent';
+import { Meerkat } from '../src/core/Meerkat';
 import { AuthAgent } from '../src/core/AuthAgent';
 import { GateInformation } from '../src/models/GateInformation';
 import { VersionGateType } from '../src/types';
 
 // Mock dependencies
 jest.mock('../src/core/SettingsStore');
-jest.mock('../src/core/AnalyticsAgent');
+jest.mock('../src/core/Meerkat');
 jest.mock('../src/core/AuthAgent');
 jest.mock('../src/utils/lifecycle', () => ({
   subscribeToLifecycle: jest.fn(() => jest.fn()),
@@ -43,9 +43,9 @@ describe('SideKit', () => {
       expect(SettingsStore).toHaveBeenCalled();
     });
 
-    it('should initialize AnalyticsAgent with API key', async () => {
+    it('should initialize Meerkat with API key', async () => {
       await sideKit.configure('test-api-key');
-      expect(AnalyticsAgent).toHaveBeenCalledWith('test-api-key');
+      expect(Meerkat).toHaveBeenCalledWith('test-api-key');
     });
 
     it('should check for first launch', async () => {
@@ -55,6 +55,8 @@ describe('SideKit', () => {
         isFirstLaunch: jest.fn().mockResolvedValue(true),
         markLaunched: jest.fn().mockResolvedValue(undefined),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -65,13 +67,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -88,6 +91,8 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -98,13 +103,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -113,7 +119,7 @@ describe('SideKit', () => {
     it('should send single signal with key only', () => {
       sideKit.sendSignals([{ key: 'button_clicked' }]);
 
-      const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
         .value;
       expect(mockInstance.sendSignals).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -125,7 +131,7 @@ describe('SideKit', () => {
     it('should send single signal with key and value', () => {
       sideKit.sendSignals([{ key: 'button_clicked', value: 'signup' }]);
 
-      const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
         .value;
       expect(mockInstance.sendSignals).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -144,7 +150,7 @@ describe('SideKit', () => {
         { key: 'feature_used' },
       ]);
 
-      const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
         .value;
       expect(mockInstance.sendSignals).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -159,7 +165,7 @@ describe('SideKit', () => {
       sideKit.isAnalyticsEnabled = false;
       sideKit.sendSignals([{ key: 'test_event' }]);
 
-      const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
         .value;
       const calls = mockInstance.sendSignals.mock.calls;
 
@@ -174,7 +180,7 @@ describe('SideKit', () => {
     it('should handle empty signals array', () => {
       sideKit.sendSignals([]);
 
-      const mockInstance = (AnalyticsAgent as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
         .value;
       expect(mockInstance.sendSignals).toHaveBeenCalledWith([]);
     });
@@ -187,6 +193,8 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -197,13 +205,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -231,6 +240,8 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -240,13 +251,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -284,6 +296,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -294,13 +308,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(gateInfo),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -325,6 +340,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -335,13 +352,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(gateInfo),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -367,6 +385,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -377,13 +397,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(gateInfo),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -411,6 +432,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -421,13 +444,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(gateInfo),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -452,6 +476,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -461,13 +487,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -500,6 +527,8 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockRejectedValue(new Error('Storage error')),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -509,13 +538,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -535,6 +565,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -544,13 +576,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -558,7 +591,7 @@ describe('SideKit', () => {
       // Configure again
       await sideKit.configure('test-api-key-2');
 
-      expect(AnalyticsAgent).toHaveBeenCalledWith('test-api-key-2');
+      expect(Meerkat).toHaveBeenCalledWith('test-api-key-2');
     });
   });
 
@@ -569,6 +602,8 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -578,13 +613,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -617,6 +653,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(cachedGate),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -627,13 +665,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null), // API returns null
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -651,6 +690,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -661,13 +702,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       const subscribeToLifecycle = require('../src/utils/lifecycle').subscribeToLifecycle;
@@ -684,13 +726,13 @@ describe('SideKit', () => {
       await sideKit.configure('test-api-key');
 
       // Clear previous sendSignals calls
-      mockAnalyticsAgent.sendSignals.mockClear();
+      mockMeerkat.sendSignals.mockClear();
 
       // Trigger foreground
       onForegroundCallback();
 
       // Should send _app_open signal
-      expect(mockAnalyticsAgent.sendSignals).toHaveBeenCalledWith(
+      expect(mockMeerkat.sendSignals).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ name: '_app_open' }),
         ])
@@ -699,7 +741,7 @@ describe('SideKit', () => {
       // Wait for version check
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      expect(mockAnalyticsAgent.getGateInformation).toHaveBeenCalled();
+      expect(mockMeerkat.getGateInformation).toHaveBeenCalled();
     });
 
     it('should trigger background handler on app background', async () => {
@@ -707,6 +749,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -716,13 +760,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       const subscribeToLifecycle = require('../src/utils/lifecycle').subscribeToLifecycle;
@@ -752,6 +797,8 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
         clearAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -761,13 +808,14 @@ describe('SideKit', () => {
         () => mockSettingsStore
       );
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockRejectedValue(new Error('Network error')),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
 
-      (AnalyticsAgent as jest.Mock).mockImplementation(
-        () => mockAnalyticsAgent
+      (Meerkat as jest.Mock).mockImplementation(
+        () => mockMeerkat
       );
 
       await sideKit.configure('test-api-key');
@@ -799,6 +847,8 @@ describe('SideKit', () => {
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         markLaunched: jest.fn().mockResolvedValue(undefined),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
         getAuthSession: jest.fn().mockResolvedValue(overrides?.storedSession ?? null),
         setAuthSession: jest.fn().mockResolvedValue(undefined),
@@ -806,11 +856,12 @@ describe('SideKit', () => {
       };
       (SettingsStore as jest.Mock).mockImplementation(() => mockSettingsStore);
 
-      const mockAnalyticsAgent = {
+      const mockMeerkat = {
         sendSignals: jest.fn().mockResolvedValue(undefined),
         getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
       };
-      (AnalyticsAgent as jest.Mock).mockImplementation(() => mockAnalyticsAgent);
+      (Meerkat as jest.Mock).mockImplementation(() => mockMeerkat);
 
       const mockAuthAgent = {
         otpSend: jest.fn(),
@@ -928,6 +979,96 @@ describe('SideKit', () => {
       expect(mockSettingsStore.clearAuthSession).toHaveBeenCalled();
       expect(sideKit.isAuthenticated).toBe(false);
       expect(sideKit.authUser).toBeNull();
+    });
+  });
+
+  describe('feature flags', () => {
+    const FLAGS = [
+      { key: 'dark_mode', value: true, isFlag: true, updatedAt: '2026-01-01T00:00:00Z' },
+      { key: 'beta', value: false, isFlag: true, updatedAt: '2026-01-01T00:00:00Z' },
+      { key: 'welcome_msg', value: 'Hi there', isFlag: false, updatedAt: '2026-01-01T00:00:00Z' },
+    ];
+
+    // Wire mocks where getFlags resolves to `serverFlags` and the cache to `cachedFlags`,
+    // then configure. Returns the mocks for assertions.
+    async function setupFlags(opts?: {
+      serverFlags?: unknown;
+      cachedFlags?: unknown;
+    }) {
+      const mockSettingsStore = {
+        isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
+        setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
+        isFirstLaunch: jest.fn().mockResolvedValue(false),
+        markLaunched: jest.fn().mockResolvedValue(undefined),
+        getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
+        getCachedFlags: jest.fn().mockResolvedValue(opts?.cachedFlags ?? null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
+      };
+      (SettingsStore as jest.Mock).mockImplementation(() => mockSettingsStore);
+
+      const mockMeerkat = {
+        sendSignals: jest.fn().mockResolvedValue(undefined),
+        getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(opts?.serverFlags ?? null),
+      };
+      (Meerkat as jest.Mock).mockImplementation(() => mockMeerkat);
+
+      await sideKit.configure('test-api-key');
+      return { mockSettingsStore, mockMeerkat };
+    }
+
+    it('populates flags from the server on configure and caches them', async () => {
+      const { mockSettingsStore } = await setupFlags({ serverFlags: FLAGS });
+      expect(sideKit.flags).toEqual(FLAGS);
+      expect(mockSettingsStore.setCachedFlags).toHaveBeenCalledWith(FLAGS);
+    });
+
+    it('falls back to cached flags when the server is unavailable', async () => {
+      await setupFlags({ serverFlags: null, cachedFlags: FLAGS });
+      expect(sideKit.flags).toEqual(FLAGS);
+    });
+
+    it('flag() returns the boolean value for a boolean flag', async () => {
+      await setupFlags({ serverFlags: FLAGS });
+      expect(sideKit.flag('dark_mode')).toBe(true);
+      expect(sideKit.flag('beta')).toBe(false);
+    });
+
+    it('flag() returns the default for missing keys or non-boolean entries', async () => {
+      await setupFlags({ serverFlags: FLAGS });
+      expect(sideKit.flag('missing')).toBe(false);
+      expect(sideKit.flag('missing', true)).toBe(true);
+      // welcome_msg is a string config, not a boolean flag
+      expect(sideKit.flag('welcome_msg', true)).toBe(true);
+    });
+
+    it('config() returns the string value for a config entry', async () => {
+      await setupFlags({ serverFlags: FLAGS });
+      expect(sideKit.config('welcome_msg')).toBe('Hi there');
+    });
+
+    it('config() returns the default for missing keys or boolean flags', async () => {
+      await setupFlags({ serverFlags: FLAGS });
+      expect(sideKit.config('missing')).toBe('');
+      expect(sideKit.config('missing', 'fallback')).toBe('fallback');
+      // dark_mode is a boolean flag, not a string config
+      expect(sideKit.config('dark_mode', 'fallback')).toBe('fallback');
+    });
+
+    it('refreshFlags() updates flags and notifies listeners', async () => {
+      const { mockMeerkat } = await setupFlags({ serverFlags: [] });
+      const listener = jest.fn();
+      sideKit.subscribe(listener);
+
+      mockMeerkat.getFlags.mockResolvedValueOnce(FLAGS);
+      await sideKit.refreshFlags();
+
+      expect(sideKit.flags).toEqual(FLAGS);
+      expect(listener).toHaveBeenCalled();
     });
   });
 });

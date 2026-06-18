@@ -2,7 +2,7 @@
  * AuthAgent - HTTP client for SideKit end-user auth (/v1/auth/*)
  *
  * Handles the phone -> OTP -> session flow plus handle/email/logout. Unlike
- * AnalyticsAgent (fire-and-forget), every call returns an AuthResult so the UI can
+ * Meerkat (fire-and-forget), every call returns an AuthResult so the UI can
  * branch on success vs. the error code the API surfaces (e.g. 'invalid_code',
  * 'rate_limited', 'handle_taken').
  */

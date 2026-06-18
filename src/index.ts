@@ -67,6 +67,7 @@ export function useSideKit(): SideKitState {
     showUpdateScreen: SideKit.shared.showUpdateScreen,
     gateInformation: SideKit.shared.gateInformation,
     isAnalyticsEnabled: SideKit.shared.isAnalyticsEnabled,
+    flags: SideKit.shared.flags,
     authUser: SideKit.shared.authUser,
     isAuthenticated: SideKit.shared.isAuthenticated,
     sessionToken: SideKit.shared.sessionToken,
@@ -79,6 +80,7 @@ export function useSideKit(): SideKitState {
         showUpdateScreen: SideKit.shared.showUpdateScreen,
         gateInformation: SideKit.shared.gateInformation,
         isAnalyticsEnabled: SideKit.shared.isAnalyticsEnabled,
+        flags: SideKit.shared.flags,
         authUser: SideKit.shared.authUser,
         isAuthenticated: SideKit.shared.isAuthenticated,
         sessionToken: SideKit.shared.sessionToken,
@@ -108,6 +110,20 @@ export function useSideKit(): SideKitState {
     ) => SideKit.shared.sendFeedback(feedbackText, options),
     []
   );
+
+  const flag = useCallback(
+    (key: string, defaultValue?: boolean) =>
+      SideKit.shared.flag(key, defaultValue),
+    []
+  );
+
+  const config = useCallback(
+    (key: string, defaultValue?: string) =>
+      SideKit.shared.config(key, defaultValue),
+    []
+  );
+
+  const refreshFlags = useCallback(() => SideKit.shared.refreshFlags(), []);
 
   const dismissUpdateGate = useCallback(() => {
     SideKit.shared.dismissUpdateGate();
@@ -149,6 +165,9 @@ export function useSideKit(): SideKitState {
     sendSignal,
     sendSignals,
     sendFeedback,
+    flag,
+    config,
+    refreshFlags,
     dismissUpdateGate,
     setAnalyticsEnabled,
     requestOtp,

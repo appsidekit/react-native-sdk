@@ -162,6 +162,7 @@ describe('SettingsStore', () => {
         'sk_analytics_enabled',
         'sk_first_launch',
         'sk_cached_gate_information',
+        'sk_cached_flags',
       ]);
       // The session lives in the secure store, so it's cleared through that path.
       expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('sk_auth_session');

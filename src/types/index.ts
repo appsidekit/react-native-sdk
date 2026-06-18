@@ -98,6 +98,25 @@ export interface AuthVerifyResponse {
 }
 
 /**
+ * A feature flag value — boolean for flags, string for config entries.
+ */
+export type FeatureFlagValue = boolean | string;
+
+/**
+ * A feature flag or config entry fetched from the SideKit dashboard.
+ */
+export interface FeatureFlag {
+  /** The flag key (e.g. "dark_mode_enabled"). */
+  key: string;
+  /** `true`/`false` for boolean flags, or a string for config entries. */
+  value: FeatureFlagValue;
+  /** Whether this entry is a boolean flag (`true`) or a string config (`false`). */
+  isFlag: boolean;
+  /** When this flag was last updated on the server (ISO 8601). */
+  updatedAt: string;
+}
+
+/**
  * SideKit state and methods exposed via useSideKit hook
  */
 export interface SideKitState {
@@ -247,6 +266,50 @@ export interface SideKitState {
     feedbackText: string,
     options?: { endUserId?: string; userAttributes?: Record<string, string> }
   ) => Promise<boolean>;
+
+  /**
+   * All feature flags and config entries fetched from the server.
+   *
+   * Populated on `configure()` and refreshed by `refreshFlags()`. Prefer the `flag()` and
+   * `config()` helpers for typed lookups with defaults.
+   */
+  flags: FeatureFlag[];
+
+  /**
+   * Get the boolean value of a feature flag.
+   *
+   * Returns `defaultValue` if the key doesn't exist or isn't a boolean flag.
+   *
+   * @param {string} key - The flag key (e.g. "dark_mode_enabled")
+   * @param {boolean} [defaultValue=false] - Value to return when the flag is missing
+   *
+   * @example
+   * ```typescript
+   * if (flag('new_onboarding')) showNewOnboarding();
+   * ```
+   */
+  flag: (key: string, defaultValue?: boolean) => boolean;
+
+  /**
+   * Get the string value of a config entry.
+   *
+   * Returns `defaultValue` if the key doesn't exist or isn't a string config entry.
+   *
+   * @param {string} key - The config key (e.g. "welcome_message")
+   * @param {string} [defaultValue=''] - Value to return when the config is missing
+   *
+   * @example
+   * ```typescript
+   * const msg = config('welcome_message', 'Welcome!');
+   * ```
+   */
+  config: (key: string, defaultValue?: string) => string;
+
+  /**
+   * Fetch the latest feature flags from the server, falling back to the cached set on
+   * failure. Updates `flags` and notifies subscribers.
+   */
+  refreshFlags: () => Promise<void>;
 
   /** Dismiss the update gate (for dismissible gates only) */
   dismissUpdateGate: () => void;

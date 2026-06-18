@@ -1,12 +1,15 @@
 /**
- * AnalyticsAgent - HTTP client for SideKit API
+ * Meerkat — the HTTP client for the SideKit API.
  *
- * Handles GET/POST requests to the SideKit backend
+ * Named for the SideKit mascot. Handles all network calls (version gating, analytics
+ * signals, feature flags, feedback) to api.appsidekit.com. Internal to the SDK — not
+ * part of the public API.
  */
 
 import { GateInformation } from '../models/GateInformation';
 import { SignalPayload } from '../models/Signal';
 import { log, error } from '../utils/logger';
+import type { FeatureFlag } from '../types';
 import {
   getAppVersion,
   getPlatform,
@@ -21,11 +24,12 @@ const API_BASE_URL = 'https://api.appsidekit.com';
 const API_VERSION_ENDPOINT = '/v1/version';
 const API_SIGNALS_ENDPOINT = '/v1';
 const API_FEEDBACK_ENDPOINT = '/v1/feedback';
+const API_FLAGS_ENDPOINT = '/v1/flags';
 
 /**
- * AnalyticsAgent class
+ * Meerkat — SideKit's API client. See file header.
  */
-export class AnalyticsAgent {
+export class Meerkat {
   private apiKey: string;
 
   constructor(apiKey: string) {
@@ -75,6 +79,45 @@ export class AnalyticsAgent {
       return new GateInformation(data);
     } catch (err) {
       error('Failed to fetch gate information', err);
+      return null;
+    }
+  }
+
+  /**
+   * Get feature flags from API. Returns null on network/API error so the caller can
+   * fall back to cached flags.
+   */
+  async getFlags(): Promise<FeatureFlag[] | null> {
+    try {
+      const url = `${API_BASE_URL}${API_FLAGS_ENDPOINT}`;
+      log(`Fetching feature flags from ${url}`);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'API-Key': this.apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        error(
+          `Failed to fetch flags: ${response.status} ${response.statusText}`
+        );
+        return null;
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        error('Unexpected flags response (expected an array)');
+        return null;
+      }
+
+      log(`Received ${data.length} feature flag(s)`);
+      return data as FeatureFlag[];
+    } catch (err) {
+      error('Failed to fetch flags', err);
       return null;
     }
   }

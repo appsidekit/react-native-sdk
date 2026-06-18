@@ -5,7 +5,7 @@
  */
 
 import { SettingsStore } from './SettingsStore';
-import { AnalyticsAgent } from './AnalyticsAgent';
+import { Meerkat } from './Meerkat';
 import { AuthAgent } from './AuthAgent';
 import { GateInformation } from '../models/GateInformation';
 import { Signal } from '../models/Signal';
@@ -17,6 +17,7 @@ import type {
   AuthResult,
   AuthUser,
   AuthOtpResponse,
+  FeatureFlag,
 } from '../types';
 
 /** Current Unix time in seconds. */
@@ -33,13 +34,14 @@ export class SideKit {
 
   // Dependencies
   private settingsStore?: SettingsStore;
-  private analyticsAgent?: AnalyticsAgent;
+  private meerkat?: Meerkat;
   private authAgent?: AuthAgent;
 
   // State
   public showUpdateScreen = false;
   public gateInformation: GateInformation | null = null;
   private _isAnalyticsEnabled = true;
+  private _flags: FeatureFlag[] = [];
 
   // Auth state
   private _authUser: AuthUser | null = null;
@@ -93,7 +95,7 @@ export class SideKit {
 
     // Initialize dependencies
     this.settingsStore = new SettingsStore();
-    this.analyticsAgent = new AnalyticsAgent(apiKey);
+    this.meerkat = new Meerkat(apiKey);
     this.authAgent = new AuthAgent(apiKey);
 
     // Load analytics enabled state
@@ -126,6 +128,9 @@ export class SideKit {
     // Perform initial version check
     await this.checkVersionCompliance();
 
+    // Fetch feature flags (network + cache fallback)
+    await this.refreshFlags();
+
     // Send app open signal
     this.sendSignals([{ key: '_app_open' }]);
 
@@ -146,8 +151,8 @@ export class SideKit {
       return;
     }
 
-    if (!this.analyticsAgent) {
-      error('Analytics agent not initialized');
+    if (!this.meerkat) {
+      error('Meerkat (API client) not initialized');
       return;
     }
 
@@ -160,7 +165,7 @@ export class SideKit {
     });
 
     // Send signals asynchronously (fire and forget)
-    this.analyticsAgent.sendSignals(signalObjects).catch((err) => {
+    this.meerkat.sendSignals(signalObjects).catch((err) => {
       error('Failed to send signals', err);
     });
   }
@@ -179,13 +184,13 @@ export class SideKit {
     feedbackText: string,
     options?: { endUserId?: string; userAttributes?: Record<string, string> }
   ): Promise<boolean> {
-    if (!this.isConfigured || !this.analyticsAgent) {
+    if (!this.isConfigured || !this.meerkat) {
       error('SDK not configured. Call configure() first.');
       return false;
     }
 
     const endUserId = options?.endUserId ?? this._authUser?.id ?? undefined;
-    return this.analyticsAgent.sendFeedback(
+    return this.meerkat.sendFeedback(
       feedbackText,
       endUserId,
       options?.userAttributes
@@ -218,6 +223,70 @@ export class SideKit {
 
     log(`Analytics ${enabled ? 'enabled' : 'disabled'}`);
     this.notifyListeners();
+  }
+
+  // ------------- //
+  // FEATURE FLAGS //
+  // ------------- //
+
+  /**
+   * All feature flags and config entries fetched from the server. Populated on
+   * configure() and refreshFlags().
+   */
+  get flags(): FeatureFlag[] {
+    return this._flags;
+  }
+
+  /**
+   * Get the boolean value of a feature flag, or `defaultValue` if the key doesn't exist
+   * or isn't a boolean flag.
+   */
+  flag(key: string, defaultValue = false): boolean {
+    const found = this._flags.find((f) => f.key === key);
+    if (!found || !found.isFlag || typeof found.value !== 'boolean') {
+      return defaultValue;
+    }
+    return found.value;
+  }
+
+  /**
+   * Get the string value of a config entry, or `defaultValue` if the key doesn't exist
+   * or isn't a string config entry.
+   */
+  config(key: string, defaultValue = ''): string {
+    const found = this._flags.find((f) => f.key === key);
+    if (!found || found.isFlag || typeof found.value !== 'string') {
+      return defaultValue;
+    }
+    return found.value;
+  }
+
+  /**
+   * Fetch the latest feature flags from the server, falling back to the cached set on
+   * failure. Updates `flags` and notifies listeners.
+   */
+  async refreshFlags(): Promise<void> {
+    if (!this.meerkat || !this.settingsStore) {
+      error('SDK not configured. Call configure() first.');
+      return;
+    }
+
+    const fetched = await this.meerkat.getFlags();
+    if (fetched) {
+      this._flags = fetched;
+      await this.settingsStore.setCachedFlags(fetched);
+      log(`Fetched ${fetched.length} flags from server`);
+      this.notifyListeners();
+      return;
+    }
+
+    // Network/API failure — fall back to cached flags.
+    const cached = await this.settingsStore.getCachedFlags();
+    if (cached) {
+      this._flags = cached;
+      log(`Using ${cached.length} cached flags (server unavailable)`);
+      this.notifyListeners();
+    }
   }
 
   // ---- //
@@ -451,7 +520,7 @@ export class SideKit {
    * Check version compliance
    */
   private async checkVersionCompliance(): Promise<void> {
-    if (!this.analyticsAgent || !this.settingsStore) {
+    if (!this.meerkat || !this.settingsStore) {
       return;
     }
 
@@ -530,12 +599,12 @@ export class SideKit {
    * Fetch gate information (network + cache fallback)
    */
   private async fetchGateInformation(): Promise<GateInformation | null> {
-    if (!this.analyticsAgent || !this.settingsStore) {
+    if (!this.meerkat || !this.settingsStore) {
       return null;
     }
 
     // Try to fetch from API
-    const gateInfo = await this.analyticsAgent.getGateInformation();
+    const gateInfo = await this.meerkat.getGateInformation();
 
     if (gateInfo) {
       // Cache successful response
@@ -591,11 +660,12 @@ export class SideKit {
     this.cleanup();
     this.isConfigured = false;
     this.settingsStore = undefined;
-    this.analyticsAgent = undefined;
+    this.meerkat = undefined;
     this.authAgent = undefined;
     this.showUpdateScreen = false;
     this.gateInformation = null;
     this._isAnalyticsEnabled = true;
+    this._flags = [];
     this._authUser = null;
     this._sessionToken = null;
     this._sessionExpiresAt = null;
