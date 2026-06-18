@@ -101,6 +101,14 @@ export function useSideKit(): SideKitState {
     []
   );
 
+  const sendFeedback = useCallback(
+    (
+      feedbackText: string,
+      options?: Parameters<typeof SideKit.shared.sendFeedback>[1]
+    ) => SideKit.shared.sendFeedback(feedbackText, options),
+    []
+  );
+
   const dismissUpdateGate = useCallback(() => {
     SideKit.shared.dismissUpdateGate();
   }, []);
@@ -140,6 +148,7 @@ export function useSideKit(): SideKitState {
     ...state,
     sendSignal,
     sendSignals,
+    sendFeedback,
     dismissUpdateGate,
     setAnalyticsEnabled,
     requestOtp,

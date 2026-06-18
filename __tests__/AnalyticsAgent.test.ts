@@ -179,4 +179,84 @@ describe('AnalyticsAgent', () => {
       expect(global.fetch).toHaveBeenCalled();
     });
   });
+
+  describe('sendFeedback', () => {
+    it('should POST feedback to the feedback endpoint with auth header', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 201,
+      });
+
+      const ok = await agent.sendFeedback('Great app!');
+
+      expect(ok).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.appsidekit.com/v1/feedback',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'API-Key': 'test-api-key',
+          }),
+        })
+      );
+    });
+
+    it('should include feedback text, attribution, and device metadata in payload', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 201,
+      });
+
+      await agent.sendFeedback('Needs dark mode', 'u_123', {
+        screen: 'settings',
+      });
+
+      const callArgs = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(callArgs[1].body);
+
+      expect(body.feedbackText).toBe('Needs dark mode');
+      expect(body.endUserId).toBe('u_123');
+      expect(body.userAttributes).toEqual({ screen: 'settings' });
+      expect(body).toHaveProperty('osVersion');
+      expect(body).toHaveProperty('appVersion');
+      expect(body).toHaveProperty('country');
+      expect(body).toHaveProperty('language');
+      expect(body).toHaveProperty('platform');
+      expect(body).toHaveProperty('deviceModel');
+    });
+
+    it('should omit optional attribution when not provided', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 201,
+      });
+
+      await agent.sendFeedback('Just text');
+
+      const callArgs = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(callArgs[1].body);
+
+      expect(body.feedbackText).toBe('Just text');
+      expect(body).not.toHaveProperty('endUserId');
+      expect(body).not.toHaveProperty('userAttributes');
+    });
+
+    it('should return false on API error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      });
+
+      await expect(agent.sendFeedback('hello')).resolves.toBe(false);
+    });
+
+    it('should return false on network error without throwing', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(
+        new Error('Network error')
+      );
+
+      await expect(agent.sendFeedback('hello')).resolves.toBe(false);
+    });
+  });
 });

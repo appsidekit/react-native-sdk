@@ -222,6 +222,32 @@ export interface SideKitState {
    */
   sendSignals: (signals: Array<{ key: string; value?: string }>) => void;
 
+  /**
+   * Submit user feedback to SideKit.
+   *
+   * Device metadata (OS version, app version, device model, country, language, platform)
+   * is attached automatically. When signed in, feedback is attributed to the current user
+   * unless you pass an explicit `endUserId`. Feedback is sent regardless of whether
+   * analytics is enabled. Resolves to true when accepted, false otherwise.
+   *
+   * @param {string} feedbackText - The user's feedback message
+   * @param {object} [options] - Optional attribution
+   * @param {string} [options.endUserId] - Override the user id (defaults to the signed-in user)
+   * @param {Record<string, string>} [options.userAttributes] - Custom key/value attributes
+   *
+   * @example
+   * ```typescript
+   * const ok = await sendFeedback('Love the app! Could use dark mode.', {
+   *   userAttributes: { screen: 'settings', plan: 'pro' },
+   * });
+   * if (ok) showThankYou();
+   * ```
+   */
+  sendFeedback: (
+    feedbackText: string,
+    options?: { endUserId?: string; userAttributes?: Record<string, string> }
+  ) => Promise<boolean>;
+
   /** Dismiss the update gate (for dismissible gates only) */
   dismissUpdateGate: () => void;
 

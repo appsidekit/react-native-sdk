@@ -20,6 +20,7 @@ import {
 const API_BASE_URL = 'https://api.appsidekit.com';
 const API_VERSION_ENDPOINT = '/v1/version';
 const API_SIGNALS_ENDPOINT = '/v1';
+const API_FEEDBACK_ENDPOINT = '/v1/feedback';
 
 /**
  * AnalyticsAgent class
@@ -116,6 +117,58 @@ export class AnalyticsAgent {
       }
     } catch (err) {
       error('Failed to send signals', err);
+    }
+  }
+
+  /**
+   * Send user feedback to API. Device metadata is enriched automatically.
+   *
+   * Resolves to true when the feedback was accepted (HTTP 2xx), false otherwise.
+   * Never throws — network/API failures resolve to false.
+   */
+  async sendFeedback(
+    feedbackText: string,
+    endUserId?: string,
+    userAttributes?: Record<string, string>
+  ): Promise<boolean> {
+    try {
+      const payload = {
+        feedbackText,
+        endUserId: endUserId || undefined,
+        userAttributes: userAttributes || undefined,
+        platform: getPlatform() || undefined,
+        appVersion: getAppVersion() || undefined,
+        osVersion: getOSVersion() || undefined,
+        country: getCountryCode() || undefined,
+        language: getLanguageCode() || undefined,
+        deviceModel: getDeviceModel() || undefined,
+      };
+
+      const url = `${API_BASE_URL}${API_FEEDBACK_ENDPOINT}`;
+      log(`Sending feedback to ${url}`);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'API-Key': this.apiKey,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        log(`Feedback sent successfully (${response.status})`);
+        return true;
+      }
+
+      error(
+        `Failed to send feedback: ${response.status} ${response.statusText}`
+      );
+      return false;
+    } catch (err) {
+      error('Failed to send feedback', err);
+      return false;
     }
   }
 }

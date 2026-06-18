@@ -166,6 +166,33 @@ export class SideKit {
   }
 
   /**
+   * Submit user feedback to SideKit. Device metadata (OS, app version, locale, device
+   * model) is attached automatically.
+   *
+   * If `endUserId` is omitted it defaults to the signed-in user's id (when authenticated),
+   * so feedback is attributed to the current user without extra wiring. Unlike analytics
+   * signals, feedback is sent regardless of the analytics-enabled setting.
+   *
+   * Resolves to true when the feedback was accepted, false otherwise (never throws).
+   */
+  async sendFeedback(
+    feedbackText: string,
+    options?: { endUserId?: string; userAttributes?: Record<string, string> }
+  ): Promise<boolean> {
+    if (!this.isConfigured || !this.analyticsAgent) {
+      error('SDK not configured. Call configure() first.');
+      return false;
+    }
+
+    const endUserId = options?.endUserId ?? this._authUser?.id ?? undefined;
+    return this.analyticsAgent.sendFeedback(
+      feedbackText,
+      endUserId,
+      options?.userAttributes
+    );
+  }
+
+  /**
    * Get whether analytics tracking is currently enabled
    */
   get isAnalyticsEnabled(): boolean {
