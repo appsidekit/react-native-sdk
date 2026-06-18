@@ -83,9 +83,9 @@ export type AuthResult<T> =
   | { ok: false; error: string; status: number; retryAfter?: number };
 
 /**
- * The channel an OTP identifier is delivered over. `phone` (Twilio SMS) is the only
- * signup/login channel today; `email` is reserved for apps that make email their primary
- * channel, and for adding a secondary channel to an existing account.
+ * The channel an OTP identifier is delivered over. `phone` (SMS) is the only signup/login
+ * channel today; `email` is reserved for apps that make email their primary channel, and
+ * for adding a secondary channel to an existing account.
  */
 export type AuthChannel = 'phone' | 'email';
 
