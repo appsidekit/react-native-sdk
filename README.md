@@ -13,16 +13,17 @@ SideKit is a lightweight React Native SDK that provides seamless version gating 
 
 - **Version Gating**: Remotely force updates or suggest new versions to your users.
 - **Analytics Signals**: Send custom events (signals) to track user behavior and app health.
+- **End-User Auth**: Sign users in with a phone number + OTP; sessions persist across launches.
 - **Automatic Presentation**: Out-of-the-box UI for update prompts that works for both iOS and Android.
-- **Expo Compatible**: Works with both Expo and bare React Native
+- **Built for Expo**: First-class Expo support (uses Expo modules for device info and secure storage)
 
 ## Installation
 
 ```bash
-npm install @sidekit/react-native @react-native-async-storage/async-storage
-# or
-yarn add @sidekit/react-native @react-native-async-storage/async-storage
+npx expo install @sidekit/react-native @react-native-async-storage/async-storage expo-secure-store
 ```
+
+`expo-secure-store` backs the end-user auth session (Keychain/Keystore). If you don't use end-user auth you can omit it.
 
 ## Usage
 
@@ -95,6 +96,58 @@ const { isAnalyticsEnabled, setAnalyticsEnabled } = useSideKit();
 
 The preference is automatically persisted across app launches.
 
+### 5. End-User Authentication
+
+Sign your users in with their phone number via a one-time passcode (OTP). The session is persisted across app launches, so a returning user stays signed in. Requires your app to be enabled for end-user auth.
+
+```ts
+const {
+  isAuthenticated,
+  authUser,
+  sessionToken,
+  requestOtp,
+  verifyOtp,
+  setHandle,
+  setRecoveryEmail,
+  logout,
+} = useSideKit();
+
+// 1. Request a code (phone, E.164)
+const send = await requestOtp("+15555550100");
+if (!send.ok) {
+  // send.error: "rate_limited" (with send.retryAfter seconds), "invalid_phone", ...
+  return;
+}
+
+// 2. Verify the code the user received
+const verify = await verifyOtp({
+  requestId: send.data.requestId,
+  phone: "+15555550100",
+  code: "123456",
+});
+if (verify.ok) {
+  // Signed in — isAuthenticated is now true and authUser is populated.
+  console.log("user id:", verify.data.id);
+} else if (verify.error === "invalid_code") {
+  // wrong/expired code — let them retry
+}
+
+// 3. (Optional) set a handle and recovery email for the signed-in user
+await setHandle("neo");              // -> { ok:false, error:"handle_taken" } on conflict
+await setRecoveryEmail("a@b.com");   // -> { ok:false, error:"email_taken" } on conflict
+
+// 4. Sign out (revokes the session server-side; always clears locally)
+await logout();
+```
+
+Every auth call returns an `AuthResult<T>`: either `{ ok: true, data }` or `{ ok: false, error, status, retryAfter? }`, where `error` is a short code you can branch on (e.g. `"invalid_code"`, `"rate_limited"`, `"handle_taken"`, `"network_error"`).
+
+**Session storage:** the session token is stored in the platform **Keychain/Keystore** via `expo-secure-store` — no setup required. Non-secret SDK state (analytics flag, cached gate) stays in AsyncStorage.
+
+**Verifying sessions on your backend:** `sessionToken` is the user's credential. Send it to your own backend and verify it server-side by calling SideKit's `POST /v1/auth/introspect` with your API key — don't trust the client's claim of who it is.
+
+> Sign-in is by phone number. Email is supported only as an optional recovery contact added after sign-in via `setRecoveryEmail`.
+
 ## Example App
 
 A comprehensive example app is included in the `example/` directory, demonstrating all SDK features:
@@ -107,9 +160,10 @@ npm start
 
 ## Requirements
 
-- React Native 0.70.0 or higher
+- Expo SDK 50 or higher (the SDK uses Expo modules for device info and secure storage)
 - React 18.0.0 or higher
 - @react-native-async-storage/async-storage 1.21.0 or higher (optional)
+- expo-secure-store (required only for end-user auth)
 
 ## License
 

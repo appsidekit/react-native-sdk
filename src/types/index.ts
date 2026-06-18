@@ -61,6 +61,43 @@ export interface SignalPayload {
 }
 
 /**
+ * An authenticated end user of your app
+ */
+export interface AuthUser {
+  /** Stable per-app user id (`u_…`); the id your backend keys end-user data on. */
+  id: string;
+  /** The user's chosen handle, or null if they haven't set one yet. */
+  handle: string | null;
+  /** Account creation time, Unix seconds. */
+  createdAt: number;
+}
+
+/**
+ * Result of an auth call. On success, `data` holds the payload; on failure, `error` is
+ * the short code surfaced by the API (e.g. 'invalid_code', 'rate_limited',
+ * 'handle_taken', 'network_error') alongside the HTTP `status` and, for rate limits,
+ * `retryAfter` in seconds.
+ */
+export type AuthResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; status: number; retryAfter?: number };
+
+/** Response from requesting an OTP. */
+export interface AuthOtpResponse {
+  /** Pass back to `verifyOtp` to complete the flow. */
+  requestId: string;
+  /** When the code expires, Unix seconds. */
+  expiresAt: number;
+}
+
+/** Response from verifying an OTP (internal — `verifyOtp` returns the `AuthUser`). */
+export interface AuthVerifyResponse {
+  sessionToken: string;
+  expiresAt: number;
+  user: AuthUser;
+}
+
+/**
  * SideKit state and methods exposed via useSideKit hook
  */
 export interface SideKitState {
@@ -69,6 +106,60 @@ export interface SideKitState {
 
   /** Current gate information */
   gateInformation: GateInformation | null;
+
+  /** The currently signed-in end user, or null when signed out. */
+  authUser: AuthUser | null;
+
+  /** Convenience flag: true when an end user is signed in. */
+  isAuthenticated: boolean;
+
+  /**
+   * The opaque session token for the signed-in user, or null. Send this to your own
+   * backend (e.g. as a Bearer header) and verify it server-side via the SideKit
+   * `/v1/auth/introspect` endpoint. Treat it as a credential.
+   */
+  sessionToken: string | null;
+
+  /**
+   * Request a one-time passcode for a phone number (E.164, e.g. "+15555550100").
+   *
+   * @example
+   * ```typescript
+   * const res = await requestOtp('+15555550100');
+   * if (res.ok) setRequestId(res.data.requestId);
+   * else if (res.error === 'rate_limited') showRetry(res.retryAfter);
+   * ```
+   */
+  requestOtp: (
+    phone: string,
+    options?: { inviteCode?: string }
+  ) => Promise<AuthResult<AuthOtpResponse>>;
+
+  /**
+   * Verify the OTP code sent to a phone. On success the SDK persists the session and
+   * updates auth state.
+   *
+   * @example
+   * ```typescript
+   * const res = await verifyOtp({ requestId, phone: '+15555550100', code: '123456' });
+   * if (res.ok) console.log('signed in as', res.data.id);
+   * else if (res.error === 'invalid_code') showError();
+   * ```
+   */
+  verifyOtp: (params: {
+    requestId: string;
+    phone: string;
+    code: string;
+  }) => Promise<AuthResult<AuthUser>>;
+
+  /** Set the signed-in user's handle. Returns 'handle_taken' on conflict. */
+  setHandle: (handle: string) => Promise<AuthResult<{ handle: string }>>;
+
+  /** Attach a recovery email to the signed-in user. Returns 'email_taken' on conflict. */
+  setRecoveryEmail: (email: string) => Promise<AuthResult<{ email: string }>>;
+
+  /** Sign out: revoke the session server-side (best-effort) and clear local auth state. */
+  logout: () => Promise<void>;
 
   /**
    * Get whether analytics tracking is currently enabled.

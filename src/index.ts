@@ -67,6 +67,9 @@ export function useSideKit(): SideKitState {
     showUpdateScreen: SideKit.shared.showUpdateScreen,
     gateInformation: SideKit.shared.gateInformation,
     isAnalyticsEnabled: SideKit.shared.isAnalyticsEnabled,
+    authUser: SideKit.shared.authUser,
+    isAuthenticated: SideKit.shared.isAuthenticated,
+    sessionToken: SideKit.shared.sessionToken,
   });
 
   useEffect(() => {
@@ -76,6 +79,9 @@ export function useSideKit(): SideKitState {
         showUpdateScreen: SideKit.shared.showUpdateScreen,
         gateInformation: SideKit.shared.gateInformation,
         isAnalyticsEnabled: SideKit.shared.isAnalyticsEnabled,
+        authUser: SideKit.shared.authUser,
+        isAuthenticated: SideKit.shared.isAuthenticated,
+        sessionToken: SideKit.shared.sessionToken,
       });
     });
 
@@ -103,11 +109,43 @@ export function useSideKit(): SideKitState {
     SideKit.shared.isAnalyticsEnabled = enabled;
   }, []);
 
+  // Auth methods (bound to the singleton; state updates arrive via subscribe)
+  const requestOtp = useCallback(
+    (
+      phone: Parameters<typeof SideKit.shared.requestOtp>[0],
+      options?: Parameters<typeof SideKit.shared.requestOtp>[1]
+    ) => SideKit.shared.requestOtp(phone, options),
+    []
+  );
+
+  const verifyOtp = useCallback(
+    (params: Parameters<typeof SideKit.shared.verifyOtp>[0]) =>
+      SideKit.shared.verifyOtp(params),
+    []
+  );
+
+  const setHandle = useCallback(
+    (handle: string) => SideKit.shared.setHandle(handle),
+    []
+  );
+
+  const setRecoveryEmail = useCallback(
+    (email: string) => SideKit.shared.setRecoveryEmail(email),
+    []
+  );
+
+  const logout = useCallback(() => SideKit.shared.logout(), []);
+
   return {
     ...state,
     sendSignal,
     sendSignals,
     dismissUpdateGate,
     setAnalyticsEnabled,
+    requestOtp,
+    verifyOtp,
+    setHandle,
+    setRecoveryEmail,
+    logout,
   };
 }

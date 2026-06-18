@@ -1,12 +1,14 @@
 import { SideKit } from '../src/core/SideKit';
 import { SettingsStore } from '../src/core/SettingsStore';
 import { AnalyticsAgent } from '../src/core/AnalyticsAgent';
+import { AuthAgent } from '../src/core/AuthAgent';
 import { GateInformation } from '../src/models/GateInformation';
 import { VersionGateType } from '../src/types';
 
 // Mock dependencies
 jest.mock('../src/core/SettingsStore');
 jest.mock('../src/core/AnalyticsAgent');
+jest.mock('../src/core/AuthAgent');
 jest.mock('../src/utils/lifecycle', () => ({
   subscribeToLifecycle: jest.fn(() => jest.fn()),
 }));
@@ -53,6 +55,9 @@ describe('SideKit', () => {
         isFirstLaunch: jest.fn().mockResolvedValue(true),
         markLaunched: jest.fn().mockResolvedValue(undefined),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -83,6 +88,9 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -179,6 +187,9 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -220,6 +231,9 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
       };
 
       (SettingsStore as jest.Mock).mockImplementation(
@@ -270,6 +284,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -308,6 +325,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -347,6 +367,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -388,6 +411,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -426,6 +452,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
       };
 
       (SettingsStore as jest.Mock).mockImplementation(
@@ -471,6 +500,9 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockRejectedValue(new Error('Storage error')),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
       };
 
       (SettingsStore as jest.Mock).mockImplementation(
@@ -503,6 +535,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
       };
 
       (SettingsStore as jest.Mock).mockImplementation(
@@ -534,6 +569,9 @@ describe('SideKit', () => {
         setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
       };
 
       (SettingsStore as jest.Mock).mockImplementation(
@@ -579,6 +617,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(cachedGate),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -610,6 +651,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
         setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -663,6 +707,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
       };
 
       (SettingsStore as jest.Mock).mockImplementation(
@@ -705,6 +752,9 @@ describe('SideKit', () => {
         isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
         isFirstLaunch: jest.fn().mockResolvedValue(false),
         getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
       };
 
       (SettingsStore as jest.Mock).mockImplementation(
@@ -730,6 +780,154 @@ describe('SideKit', () => {
 
       // Should not throw, error should be caught
       expect(true).toBe(true);
+    });
+  });
+
+  describe('auth', () => {
+    const PHONE = '+15555550100';
+    const user = { id: 'u_1', handle: null, createdAt: 100 };
+
+    // Build SettingsStore + AuthAgent mocks, wire them in, and configure. Returns the
+    // mocks so each test can assert/override behavior.
+    async function setupAuth(overrides?: {
+      authAgent?: Partial<Record<string, jest.Mock>>;
+      storedSession?: unknown;
+    }) {
+      const mockSettingsStore = {
+        isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
+        setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
+        isFirstLaunch: jest.fn().mockResolvedValue(false),
+        markLaunched: jest.fn().mockResolvedValue(undefined),
+        getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
+        getAuthSession: jest.fn().mockResolvedValue(overrides?.storedSession ?? null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
+      };
+      (SettingsStore as jest.Mock).mockImplementation(() => mockSettingsStore);
+
+      const mockAnalyticsAgent = {
+        sendSignals: jest.fn().mockResolvedValue(undefined),
+        getGateInformation: jest.fn().mockResolvedValue(null),
+      };
+      (AnalyticsAgent as jest.Mock).mockImplementation(() => mockAnalyticsAgent);
+
+      const mockAuthAgent = {
+        otpSend: jest.fn(),
+        otpVerify: jest.fn(),
+        setHandle: jest.fn(),
+        setEmail: jest.fn(),
+        logout: jest.fn().mockResolvedValue({ ok: true, data: {} }),
+        ...overrides?.authAgent,
+      };
+      (AuthAgent as jest.Mock).mockImplementation(() => mockAuthAgent);
+
+      await sideKit.configure('test-api-key');
+      return { mockSettingsStore, mockAuthAgent };
+    }
+
+    it('initializes AuthAgent with the API key', async () => {
+      await setupAuth();
+      expect(AuthAgent).toHaveBeenCalledWith('test-api-key');
+    });
+
+    it('starts signed out', async () => {
+      await setupAuth();
+      expect(sideKit.isAuthenticated).toBe(false);
+      expect(sideKit.authUser).toBeNull();
+      expect(sideKit.sessionToken).toBeNull();
+    });
+
+    it('verifyOtp persists the session and updates auth state', async () => {
+      const { mockSettingsStore } = await setupAuth({
+        authAgent: {
+          otpVerify: jest
+            .fn()
+            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user } }),
+        },
+      });
+
+      const res = await sideKit.verifyOtp({ requestId: 'otp_1', phone: PHONE, code: '123456' });
+
+      expect(res).toEqual({ ok: true, data: user });
+      expect(sideKit.isAuthenticated).toBe(true);
+      expect(sideKit.sessionToken).toBe('tok_xyz');
+      expect(sideKit.authUser).toEqual(user);
+      expect(mockSettingsStore.setAuthSession).toHaveBeenCalledWith({
+        token: 'tok_xyz',
+        user,
+        expiresAt: 9999,
+      });
+    });
+
+    it('verifyOtp leaves state signed out on failure', async () => {
+      await setupAuth({
+        authAgent: {
+          otpVerify: jest.fn().mockResolvedValue({ ok: false, error: 'invalid_code', status: 401 }),
+        },
+      });
+
+      const res = await sideKit.verifyOtp({ requestId: 'otp_1', phone: PHONE, code: '000000' });
+
+      expect(res).toEqual({ ok: false, error: 'invalid_code', status: 401 });
+      expect(sideKit.isAuthenticated).toBe(false);
+    });
+
+    it('restores a valid persisted session on configure', async () => {
+      await setupAuth({ storedSession: { token: 'tok_old', user, expiresAt: 9999999999 } });
+      expect(sideKit.isAuthenticated).toBe(true);
+      expect(sideKit.sessionToken).toBe('tok_old');
+    });
+
+    it('drops an expired persisted session on configure', async () => {
+      const { mockSettingsStore } = await setupAuth({
+        storedSession: { token: 'tok_old', user, expiresAt: 1 },
+      });
+      expect(sideKit.isAuthenticated).toBe(false);
+      expect(mockSettingsStore.clearAuthSession).toHaveBeenCalled();
+    });
+
+    it('setHandle updates the local user on success', async () => {
+      const { mockAuthAgent } = await setupAuth({
+        authAgent: {
+          otpVerify: jest
+            .fn()
+            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user } }),
+          setHandle: jest.fn().mockResolvedValue({ ok: true, data: { handle: 'neo' } }),
+        },
+      });
+      await sideKit.verifyOtp({ requestId: 'otp_1', phone: PHONE, code: '123456' });
+
+      const res = await sideKit.setHandle('neo');
+
+      expect(res).toEqual({ ok: true, data: { handle: 'neo' } });
+      expect(mockAuthAgent.setHandle).toHaveBeenCalledWith('tok_xyz', 'neo');
+      expect(sideKit.authUser?.handle).toBe('neo');
+    });
+
+    it('setHandle returns unauthorized when signed out', async () => {
+      const { mockAuthAgent } = await setupAuth();
+      const res = await sideKit.setHandle('neo');
+      expect(res).toEqual({ ok: false, error: 'unauthorized', status: 401 });
+      expect(mockAuthAgent.setHandle).not.toHaveBeenCalled();
+    });
+
+    it('logout revokes server-side and clears local state', async () => {
+      const { mockSettingsStore, mockAuthAgent } = await setupAuth({
+        authAgent: {
+          otpVerify: jest
+            .fn()
+            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user } }),
+        },
+      });
+      await sideKit.verifyOtp({ requestId: 'otp_1', phone: PHONE, code: '123456' });
+
+      await sideKit.logout();
+
+      expect(mockAuthAgent.logout).toHaveBeenCalledWith('tok_xyz');
+      expect(mockSettingsStore.clearAuthSession).toHaveBeenCalled();
+      expect(sideKit.isAuthenticated).toBe(false);
+      expect(sideKit.authUser).toBeNull();
     });
   });
 });

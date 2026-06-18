@@ -5,15 +5,28 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { GateInformation } from '../models/GateInformation';
 import { log, error } from '../utils/logger';
+import type { AuthUser } from '../types';
 
 // Storage keys
 const KEYS = {
   ANALYTICS_ENABLED: 'sk_analytics_enabled',
   FIRST_LAUNCH: 'sk_first_launch',
   CACHED_GATE: 'sk_cached_gate_information',
+  AUTH_SESSION: 'sk_auth_session',
 };
+
+/**
+ * Persisted end-user session, kept so a signed-in user survives app restarts. Stored via
+ * the secure store (see SettingsStore).
+ */
+export interface StoredAuthSession {
+  token: string;
+  user: AuthUser;
+  expiresAt: number; // Unix seconds
+}
 
 /**
  * SettingsStore class
@@ -21,9 +34,22 @@ const KEYS = {
 export class SettingsStore {
   private cache: Map<string, any> = new Map();
   private useMemoryOnly = false;
-
   constructor() {
     this.initializeCache();
+  }
+
+  // The session token is the one secret the SDK persists; it lives in the device Keychain /
+  // Keystore via expo-secure-store, never in AsyncStorage.
+  private readSession(): Promise<string | null> {
+    return SecureStore.getItemAsync(KEYS.AUTH_SESSION);
+  }
+
+  private writeSession(json: string): Promise<void> {
+    return SecureStore.setItemAsync(KEYS.AUTH_SESSION, json);
+  }
+
+  private deleteSession(): Promise<void> {
+    return SecureStore.deleteItemAsync(KEYS.AUTH_SESSION);
   }
 
   /**
@@ -175,10 +201,64 @@ export class SettingsStore {
   }
 
   /**
+   * Get the persisted end-user session, or null if none is stored or it's unparseable.
+   * Expiry is the caller's concern (SideKit drops expired sessions on load).
+   */
+  async getAuthSession(): Promise<StoredAuthSession | null> {
+    if (this.cache.has(KEYS.AUTH_SESSION)) {
+      return this.cache.get(KEYS.AUTH_SESSION);
+    }
+
+    try {
+      const value = await this.readSession();
+      if (value) {
+        const session = JSON.parse(value) as StoredAuthSession;
+        this.cache.set(KEYS.AUTH_SESSION, session);
+        return session;
+      }
+    } catch (err) {
+      error('Failed to read stored auth session', err);
+    }
+
+    return null;
+  }
+
+  /**
+   * Persist the end-user session (after a successful OTP verify). Always written to the
+   * secure store (Keychain / Keystore), never AsyncStorage.
+   */
+  async setAuthSession(session: StoredAuthSession): Promise<void> {
+    this.cache.set(KEYS.AUTH_SESSION, session);
+    try {
+      await this.writeSession(JSON.stringify(session));
+      log('Auth session persisted');
+    } catch (err) {
+      error('Failed to persist auth session', err);
+    }
+  }
+
+  /**
+   * Remove the persisted end-user session (on logout or expiry).
+   */
+  async clearAuthSession(): Promise<void> {
+    this.cache.delete(KEYS.AUTH_SESSION);
+    try {
+      await this.deleteSession();
+      log('Auth session cleared');
+    } catch (err) {
+      error('Failed to clear auth session', err);
+    }
+  }
+
+  /**
    * Clear all cached data
    */
   async clear(): Promise<void> {
     this.cache.clear();
+    // The session may live in the secure store, so clear it through the same path.
+    await this.deleteSession().catch((err) =>
+      error('Failed to clear auth session', err)
+    );
     if (!this.useMemoryOnly) {
       try {
         await AsyncStorage.multiRemove([

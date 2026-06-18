@@ -50,6 +50,13 @@ jest.mock('expo-linear-gradient', () => ({
   LinearGradient: 'LinearGradient',
 }));
 
+// Mock Expo SecureStore (default session store)
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(() => Promise.resolve(null)),
+  setItemAsync: jest.fn(() => Promise.resolve()),
+  deleteItemAsync: jest.fn(() => Promise.resolve()),
+}));
+
 // Mock fetch
 global.fetch = jest.fn();
 

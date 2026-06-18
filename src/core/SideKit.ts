@@ -6,12 +6,21 @@
 
 import { SettingsStore } from './SettingsStore';
 import { AnalyticsAgent } from './AnalyticsAgent';
+import { AuthAgent } from './AuthAgent';
 import { GateInformation } from '../models/GateInformation';
 import { Signal } from '../models/Signal';
 import { subscribeToLifecycle } from '../utils/lifecycle';
 import { getAppVersion } from '../utils/platform';
 import { log, error, setVerbose } from '../utils/logger';
-import type { ConfigOptions } from '../types';
+import type {
+  ConfigOptions,
+  AuthResult,
+  AuthUser,
+  AuthOtpResponse,
+} from '../types';
+
+/** Current Unix time in seconds. */
+const nowSeconds = (): number => Math.floor(Date.now() / 1000);
 
 /**
  * SideKit singleton class
@@ -25,11 +34,17 @@ export class SideKit {
   // Dependencies
   private settingsStore?: SettingsStore;
   private analyticsAgent?: AnalyticsAgent;
+  private authAgent?: AuthAgent;
 
   // State
   public showUpdateScreen = false;
   public gateInformation: GateInformation | null = null;
   private _isAnalyticsEnabled = true;
+
+  // Auth state
+  private _authUser: AuthUser | null = null;
+  private _sessionToken: string | null = null;
+  private _sessionExpiresAt: number | null = null;
 
   // Lifecycle
   private lifecycleUnsubscribe?: () => void;
@@ -79,9 +94,13 @@ export class SideKit {
     // Initialize dependencies
     this.settingsStore = new SettingsStore();
     this.analyticsAgent = new AnalyticsAgent(apiKey);
+    this.authAgent = new AuthAgent(apiKey);
 
     // Load analytics enabled state
     this._isAnalyticsEnabled = await this.settingsStore.isAnalyticsEnabled();
+
+    // Restore a persisted end-user session, dropping it if it has expired.
+    await this.restoreAuthSession();
 
     // Check for first launch
     const isFirstLaunch = await this.settingsStore.isFirstLaunch();
@@ -172,6 +191,180 @@ export class SideKit {
 
     log(`Analytics ${enabled ? 'enabled' : 'disabled'}`);
     this.notifyListeners();
+  }
+
+  // ---- //
+  // AUTH //
+  // ---- //
+
+  /** The currently signed-in end user, or null when signed out. */
+  get authUser(): AuthUser | null {
+    return this._authUser;
+  }
+
+  /** True when an end user is signed in (and the session hasn't expired). */
+  get isAuthenticated(): boolean {
+    return this._sessionToken !== null;
+  }
+
+  /** The opaque session token for the signed-in user, or null. Treat as a credential. */
+  get sessionToken(): string | null {
+    return this._sessionToken;
+  }
+
+  /**
+   * Request a one-time passcode for a phone number (E.164). Returns the requestId to pass
+   * to verifyOtp, or an error code ('rate_limited', 'invalid_phone', etc.).
+   */
+  async requestOtp(
+    phone: string,
+    options?: { inviteCode?: string }
+  ): Promise<AuthResult<AuthOtpResponse>> {
+    if (!this.authAgent) {
+      error('SDK not configured. Call configure() first.');
+      return { ok: false, error: 'not_configured', status: 0 };
+    }
+    return this.authAgent.otpSend(phone, options?.inviteCode);
+  }
+
+  /**
+   * Verify an OTP code. On success the session + user are persisted, auth state is
+   * updated, and listeners are notified; the signed-in AuthUser is returned.
+   */
+  async verifyOtp(params: {
+    requestId: string;
+    phone: string;
+    code: string;
+  }): Promise<AuthResult<AuthUser>> {
+    if (!this.authAgent || !this.settingsStore) {
+      error('SDK not configured. Call configure() first.');
+      return { ok: false, error: 'not_configured', status: 0 };
+    }
+
+    const result = await this.authAgent.otpVerify(params);
+    if (!result.ok) {
+      return result;
+    }
+
+    const { sessionToken, expiresAt, user } = result.data;
+    await this.applyAuthSession(sessionToken, user, expiresAt);
+    log(`Signed in as ${user.id}`);
+    return { ok: true, data: user };
+  }
+
+  /**
+   * Set the signed-in user's handle. On success the local user is updated and listeners
+   * notified. Returns 'handle_taken' (409) on conflict, 'unauthorized' if signed out.
+   */
+  async setHandle(handle: string): Promise<AuthResult<{ handle: string }>> {
+    if (!this.authAgent) {
+      error('SDK not configured. Call configure() first.');
+      return { ok: false, error: 'not_configured', status: 0 };
+    }
+    if (!this._sessionToken) {
+      return { ok: false, error: 'unauthorized', status: 401 };
+    }
+
+    const result = await this.authAgent.setHandle(this._sessionToken, handle);
+    if (result.ok && this._authUser) {
+      this._authUser = { ...this._authUser, handle: result.data.handle };
+      await this.persistCurrentSession();
+      this.notifyListeners();
+    }
+    return result;
+  }
+
+  /**
+   * Attach a recovery email to the signed-in user. Returns 'email_taken' (409) on
+   * conflict, 'unauthorized' if signed out.
+   */
+  async setRecoveryEmail(
+    email: string
+  ): Promise<AuthResult<{ email: string }>> {
+    if (!this.authAgent) {
+      error('SDK not configured. Call configure() first.');
+      return { ok: false, error: 'not_configured', status: 0 };
+    }
+    if (!this._sessionToken) {
+      return { ok: false, error: 'unauthorized', status: 401 };
+    }
+    return this.authAgent.setEmail(this._sessionToken, email);
+  }
+
+  /**
+   * Sign out. Revokes the session server-side (best-effort) and always clears local auth
+   * state — a network failure still signs the user out locally.
+   */
+  async logout(): Promise<void> {
+    const token = this._sessionToken;
+    if (token && this.authAgent) {
+      await this.authAgent.logout(token); // best-effort; revoke is idempotent
+    }
+    this._authUser = null;
+    this._sessionToken = null;
+    this._sessionExpiresAt = null;
+    if (this.settingsStore) {
+      await this.settingsStore.clearAuthSession();
+    }
+    log('Signed out');
+    this.notifyListeners();
+  }
+
+  /**
+   * Restore a persisted session on configure. An expired session is dropped.
+   */
+  private async restoreAuthSession(): Promise<void> {
+    if (!this.settingsStore) {
+      return;
+    }
+    const session = await this.settingsStore.getAuthSession();
+    if (!session) {
+      return;
+    }
+    if (session.expiresAt <= nowSeconds()) {
+      log('Stored session expired, clearing');
+      await this.settingsStore.clearAuthSession();
+      return;
+    }
+    this._sessionToken = session.token;
+    this._authUser = session.user;
+    this._sessionExpiresAt = session.expiresAt;
+    log(`Restored session for ${session.user.id}`);
+  }
+
+  /**
+   * Set the in-memory session, persist it, and notify listeners.
+   */
+  private async applyAuthSession(
+    token: string,
+    user: AuthUser,
+    expiresAt: number
+  ): Promise<void> {
+    this._sessionToken = token;
+    this._authUser = user;
+    this._sessionExpiresAt = expiresAt;
+    if (this.settingsStore) {
+      await this.settingsStore.setAuthSession({ token, user, expiresAt });
+    }
+    this.notifyListeners();
+  }
+
+  /**
+   * Re-persist the current session (e.g. after the handle changes).
+   */
+  private async persistCurrentSession(): Promise<void> {
+    if (
+      this.settingsStore &&
+      this._sessionToken &&
+      this._authUser &&
+      this._sessionExpiresAt !== null
+    ) {
+      await this.settingsStore.setAuthSession({
+        token: this._sessionToken,
+        user: this._authUser,
+        expiresAt: this._sessionExpiresAt,
+      });
+    }
   }
 
   /**
@@ -372,9 +565,13 @@ export class SideKit {
     this.isConfigured = false;
     this.settingsStore = undefined;
     this.analyticsAgent = undefined;
+    this.authAgent = undefined;
     this.showUpdateScreen = false;
     this.gateInformation = null;
     this._isAnalyticsEnabled = true;
+    this._authUser = null;
+    this._sessionToken = null;
+    this._sessionExpiresAt = null;
     this.listeners.clear();
     log('SDK reset');
   }

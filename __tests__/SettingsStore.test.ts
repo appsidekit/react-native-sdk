@@ -2,6 +2,7 @@ import { SettingsStore } from '../src/core/SettingsStore';
 import { GateInformation } from '../src/models/GateInformation';
 import { VersionGateType } from '../src/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage');
@@ -162,8 +163,57 @@ describe('SettingsStore', () => {
         'sk_first_launch',
         'sk_cached_gate_information',
       ]);
+      // The session lives in the secure store, so it's cleared through that path.
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('sk_auth_session');
     });
   });
+
+  describe('auth session (secure-by-default via expo-secure-store)', () => {
+    const session = {
+      token: 'tok_xyz',
+      user: { id: 'u_1', handle: 'neo', createdAt: 100 },
+      expiresAt: 9999,
+    };
+
+    it('returns null when no session is stored', async () => {
+      expect(await store.getAuthSession()).toBeNull();
+    });
+
+    it('persists the session to the secure store, never AsyncStorage', async () => {
+      await store.setAuthSession(session);
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+        'sk_auth_session',
+        JSON.stringify(session)
+      );
+      expect(AsyncStorage.setItem).not.toHaveBeenCalledWith(
+        'sk_auth_session',
+        expect.any(String)
+      );
+      expect(await store.getAuthSession()).toEqual(session);
+    });
+
+    it('parses a session loaded from the secure store', async () => {
+      (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(
+        JSON.stringify(session)
+      );
+      store = new SettingsStore();
+      expect(await store.getAuthSession()).toEqual(session);
+    });
+
+    it('returns null on an unparseable stored session', async () => {
+      (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('not-json');
+      store = new SettingsStore();
+      expect(await store.getAuthSession()).toBeNull();
+    });
+
+    it('clears the session from the secure store', async () => {
+      await store.setAuthSession(session);
+      await store.clearAuthSession();
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('sk_auth_session');
+      expect(await store.getAuthSession()).toBeNull();
+    });
+  });
+
 
   describe('error handling', () => {
     it('should handle AsyncStorage.getItem errors gracefully', async () => {
