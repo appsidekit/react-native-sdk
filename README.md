@@ -136,22 +136,21 @@ if (ok) showThankYou();
 
 ### 7. End-User Authentication
 
-Sign your users in with their phone number via a one-time passcode (OTP). The session is persisted across app launches, so a returning user stays signed in. Requires your app to be enabled for end-user auth.
+SideKit currently supports phone as the only sign-in channel. `signIn` sends a one-time passcode (OTP); verifying it creates an account if the user doesn't already have one, otherwise signs them in. The session is persisted across app launches, so a returning user stays signed in. Requires your app to be enabled for end-user auth.
 
 ```ts
 const {
   isAuthenticated,
   authUser,
   sessionToken,
-  requestOtp,
+  signIn,
   verifyOtp,
   setHandle,
-  setRecoveryEmail,
   logout,
 } = useSideKit();
 
-// 1. Request a code (phone, E.164)
-const send = await requestOtp("+15555550100");
+// 1. Send a code (phone, E.164). Creates the account if new, signs in if existing.
+const send = await signIn("+15555550100");
 if (!send.ok) {
   // send.error: "rate_limited" (with send.retryAfter seconds), "invalid_phone", ...
   return;
@@ -160,19 +159,21 @@ if (!send.ok) {
 // 2. Verify the code the user received
 const verify = await verifyOtp({
   requestId: send.data.requestId,
-  phone: "+15555550100",
+  identifier: "+15555550100",
   code: "123456",
 });
 if (verify.ok) {
   // Signed in — isAuthenticated is now true and authUser is populated.
-  console.log("user id:", verify.data.id);
+  console.log("user id:", verify.data.user.id);
+  if (verify.data.isNewUser) {
+    // first sign-in — route to onboarding (e.g. setHandle)
+  }
 } else if (verify.error === "invalid_code") {
   // wrong/expired code — let them retry
 }
 
-// 3. (Optional) set a handle and recovery email for the signed-in user
+// 3. (Optional) set a handle for the signed-in user
 await setHandle("neo");              // -> { ok:false, error:"handle_taken" } on conflict
-await setRecoveryEmail("a@b.com");   // -> { ok:false, error:"email_taken" } on conflict
 
 // 4. Sign out (revokes the session server-side; always clears locally)
 await logout();
@@ -183,8 +184,6 @@ Every auth call returns an `AuthResult<T>`: either `{ ok: true, data }` or `{ ok
 **Session storage:** the session token is stored in the platform **Keychain/Keystore** via `expo-secure-store` — no setup required. Non-secret SDK state (analytics flag, cached gate) stays in AsyncStorage.
 
 **Verifying sessions on your backend:** `sessionToken` is the user's credential. Send it to your own backend and verify it server-side by calling SideKit's `POST /v1/auth/introspect` with your API key — don't trust the client's claim of who it is.
-
-> Sign-in is by phone number. Email is supported only as an optional recovery contact added after sign-in via `setRecoveryEmail`.
 
 ## Example App
 

@@ -82,6 +82,13 @@ export type AuthResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string; status: number; retryAfter?: number };
 
+/**
+ * The channel an OTP identifier is delivered over. `phone` (Twilio SMS) is the only
+ * signup/login channel today; `email` is reserved for apps that make email their primary
+ * channel, and for adding a secondary channel to an existing account.
+ */
+export type AuthChannel = 'phone' | 'email';
+
 /** Response from requesting an OTP. */
 export interface AuthOtpResponse {
   /** Pass back to `verifyOtp` to complete the flow. */
@@ -90,11 +97,23 @@ export interface AuthOtpResponse {
   expiresAt: number;
 }
 
-/** Response from verifying an OTP (internal — `verifyOtp` returns the `AuthUser`). */
+/** Response from verifying an OTP (internal — `verifyOtp` returns a `SignInResult`). */
 export interface AuthVerifyResponse {
   sessionToken: string;
   expiresAt: number;
   user: AuthUser;
+  /** True if this verify created the account (first sign-in), false for a returning user. */
+  newUser: boolean;
+}
+
+/**
+ * The outcome of a successful `verifyOtp`: the signed-in user plus whether the account
+ * was just created. Branch on `isNewUser` to route new users into onboarding (e.g.
+ * `setHandle`) and returning users straight into the app.
+ */
+export interface SignInResult {
+  user: AuthUser;
+  isNewUser: boolean;
 }
 
 /**
@@ -140,42 +159,46 @@ export interface SideKitState {
   sessionToken: string | null;
 
   /**
-   * Request a one-time passcode for a phone number (E.164, e.g. "+15555550100").
+   * Start signing a user in: send a one-time passcode to an identifier on the given
+   * channel, then complete with `verifyOtp`. Passwordless, so the same call signs up a
+   * new user and signs in an existing one. Defaults to 'phone' (E.164, e.g.
+   * "+15555550100"); pass `{ channel: 'email' }` for an email.
    *
    * @example
    * ```typescript
-   * const res = await requestOtp('+15555550100');
+   * const res = await signIn('+15555550100');
    * if (res.ok) setRequestId(res.data.requestId);
    * else if (res.error === 'rate_limited') showRetry(res.retryAfter);
    * ```
    */
-  requestOtp: (
-    phone: string,
-    options?: { inviteCode?: string }
+  signIn: (
+    identifier: string,
+    options?: { channel?: AuthChannel; inviteCode?: string }
   ) => Promise<AuthResult<AuthOtpResponse>>;
 
   /**
-   * Verify the OTP code sent to a phone. On success the SDK persists the session and
+   * Verify the OTP code. Pass the same `identifier`/`channel` used in `signIn`
+   * (`channel` defaults to 'phone'). On success the SDK persists the session and
    * updates auth state.
    *
    * @example
    * ```typescript
-   * const res = await verifyOtp({ requestId, phone: '+15555550100', code: '123456' });
-   * if (res.ok) console.log('signed in as', res.data.id);
-   * else if (res.error === 'invalid_code') showError();
+   * const res = await verifyOtp({ requestId, identifier: '+15555550100', code: '123456' });
+   * if (res.ok) {
+   *   console.log('signed in as', res.data.user.id);
+   *   if (res.data.isNewUser) { /* route to onboarding *\/ }
+   * } else if (res.error === 'invalid_code') showError();
    * ```
    */
   verifyOtp: (params: {
     requestId: string;
-    phone: string;
+    identifier: string;
+    channel?: AuthChannel;
     code: string;
-  }) => Promise<AuthResult<AuthUser>>;
+  }) => Promise<AuthResult<SignInResult>>;
 
   /** Set the signed-in user's handle. Returns 'handle_taken' on conflict. */
   setHandle: (handle: string) => Promise<AuthResult<{ handle: string }>>;
-
-  /** Attach a recovery email to the signed-in user. Returns 'email_taken' on conflict. */
-  setRecoveryEmail: (email: string) => Promise<AuthResult<{ email: string }>>;
 
   /** Sign out: revoke the session server-side (best-effort) and clear local auth state. */
   logout: () => Promise<void>;

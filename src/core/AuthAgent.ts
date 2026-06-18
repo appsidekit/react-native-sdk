@@ -8,10 +8,26 @@
  */
 
 import { log, error } from '../utils/logger';
-import type { AuthResult, AuthOtpResponse, AuthVerifyResponse } from '../types';
+import type {
+  AuthResult,
+  AuthOtpResponse,
+  AuthVerifyResponse,
+  AuthChannel,
+} from '../types';
 
 const API_BASE_URL = 'https://api.appsidekit.com';
 const API_AUTH_BASE = `${API_BASE_URL}/v1/auth`;
+
+/**
+ * Build the server's discriminated-union identifier: the value rides under a
+ * channel-specific key (`{channel:'phone', phone}` / `{channel:'email', email}`),
+ * which is how `/v1/auth/*` parses it.
+ */
+function buildIdentifier(channel: AuthChannel, identifier: string) {
+  return channel === 'email'
+    ? { channel, email: identifier }
+    : { channel, phone: identifier };
+}
 
 /**
  * AuthAgent class
@@ -23,25 +39,28 @@ export class AuthAgent {
     this.apiKey = apiKey;
   }
 
-  /** POST /v1/auth/otp/send — send an OTP to a phone number. */
-  otpSend(
-    phone: string,
+  /** POST /v1/auth/otp/send — send an OTP to a phone number or email address. */
+  signIn(
+    channel: AuthChannel,
+    identifier: string,
     inviteCode?: string
   ): Promise<AuthResult<AuthOtpResponse>> {
-    const identifier = { channel: 'phone' as const, phone };
-    return this.call('POST', '/otp/send', { identifier, inviteCode });
+    return this.call('POST', '/otp/send', {
+      identifier: buildIdentifier(channel, identifier),
+      inviteCode,
+    });
   }
 
   /** POST /v1/auth/otp/verify — verify the code and mint a session. */
-  otpVerify(params: {
+  verifyOtp(params: {
     requestId: string;
-    phone: string;
+    channel: AuthChannel;
+    identifier: string;
     code: string;
   }): Promise<AuthResult<AuthVerifyResponse>> {
-    const identifier = { channel: 'phone' as const, phone: params.phone };
     return this.call('POST', '/otp/verify', {
       requestId: params.requestId,
-      identifier,
+      identifier: buildIdentifier(params.channel, params.identifier),
       code: params.code,
     });
   }
@@ -52,14 +71,6 @@ export class AuthAgent {
     handle: string
   ): Promise<AuthResult<{ handle: string }>> {
     return this.call('PUT', '/handle', { handle }, token);
-  }
-
-  /** PUT /v1/auth/email — attach a recovery email (Bearer). */
-  setEmail(
-    token: string,
-    email: string
-  ): Promise<AuthResult<{ email: string }>> {
-    return this.call('PUT', '/email', { email }, token);
   }
 
   /** POST /v1/auth/logout — revoke the session (Bearer). Idempotent. */

@@ -37,13 +37,13 @@ describe('AuthAgent', () => {
     agent = new AuthAgent('test-api-key');
   });
 
-  describe('otpSend', () => {
+  describe('signIn', () => {
     it('sends to /v1/auth/otp/send with the API key and identifier body', async () => {
       (global.fetch as jest.Mock).mockResolvedValue(
         okJson({ requestId: 'otp_abc', expiresAt: 123 })
       );
 
-      const res = await agent.otpSend(PHONE);
+      const res = await agent.signIn('phone', PHONE);
 
       expect(res).toEqual({ ok: true, data: { requestId: 'otp_abc', expiresAt: 123 } });
       expect(global.fetch).toHaveBeenCalledWith(
@@ -59,7 +59,7 @@ describe('AuthAgent', () => {
     it('surfaces a 429 as rate_limited with retryAfter from the header', async () => {
       (global.fetch as jest.Mock).mockResolvedValue(errText(429, 'rate_limited', '42'));
 
-      const res = await agent.otpSend(PHONE);
+      const res = await agent.signIn('phone', PHONE);
 
       expect(res).toEqual({
         ok: false,
@@ -72,7 +72,7 @@ describe('AuthAgent', () => {
     it('passes an invite code through', async () => {
       (global.fetch as jest.Mock).mockResolvedValue(okJson({ requestId: 'r', expiresAt: 1 }));
 
-      await agent.otpSend(PHONE, 'INVITE123');
+      await agent.signIn('phone', PHONE, 'INVITE123');
 
       expect(global.fetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -83,16 +83,17 @@ describe('AuthAgent', () => {
     });
   });
 
-  describe('otpVerify', () => {
+  describe('verifyOtp', () => {
     it('returns the session + user on success', async () => {
       const data = {
         sessionToken: 'tok_xyz',
         expiresAt: 999,
         user: { id: 'u_1', handle: null, createdAt: 100 },
+        newUser: true,
       };
       (global.fetch as jest.Mock).mockResolvedValue(okJson(data));
 
-      const res = await agent.otpVerify({ requestId: 'otp_abc', phone: PHONE, code: '123456' });
+      const res = await agent.verifyOtp({ requestId: 'otp_abc', channel: 'phone', identifier: PHONE, code: '123456' });
 
       expect(res).toEqual({ ok: true, data });
     });
@@ -100,7 +101,7 @@ describe('AuthAgent', () => {
     it('maps a 401 body to its error code', async () => {
       (global.fetch as jest.Mock).mockResolvedValue(errText(401, 'invalid_code'));
 
-      const res = await agent.otpVerify({ requestId: 'otp_abc', phone: PHONE, code: '000000' });
+      const res = await agent.verifyOtp({ requestId: 'otp_abc', channel: 'phone', identifier: PHONE, code: '000000' });
 
       expect(res).toEqual({ ok: false, error: 'invalid_code', status: 401, retryAfter: undefined });
     });
@@ -132,24 +133,6 @@ describe('AuthAgent', () => {
     });
   });
 
-  describe('setEmail', () => {
-    it('PUTs the recovery email with a Bearer token', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue(okJson({ email: 'a@b.com' }));
-
-      const res = await agent.setEmail('tok_xyz', 'a@b.com');
-
-      expect(res).toEqual({ ok: true, data: { email: 'a@b.com' } });
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.appsidekit.com/v1/auth/email',
-        expect.objectContaining({
-          method: 'PUT',
-          headers: expect.objectContaining({ Authorization: 'Bearer tok_xyz' }),
-          body: JSON.stringify({ email: 'a@b.com' }),
-        })
-      );
-    });
-  });
-
   describe('logout', () => {
     it('POSTs with the Bearer token and no body', async () => {
       (global.fetch as jest.Mock).mockResolvedValue(okJson({}));
@@ -171,7 +154,7 @@ describe('AuthAgent', () => {
     it('returns network_error when fetch throws', async () => {
       (global.fetch as jest.Mock).mockRejectedValue(new Error('offline'));
 
-      const res = await agent.otpSend(PHONE);
+      const res = await agent.signIn('phone', PHONE);
 
       expect(res).toEqual({ ok: false, error: 'network_error', status: 0 });
     });

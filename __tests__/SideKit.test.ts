@@ -864,10 +864,9 @@ describe('SideKit', () => {
       (Meerkat as jest.Mock).mockImplementation(() => mockMeerkat);
 
       const mockAuthAgent = {
-        otpSend: jest.fn(),
-        otpVerify: jest.fn(),
+        signIn: jest.fn(),
+        verifyOtp: jest.fn(),
         setHandle: jest.fn(),
-        setEmail: jest.fn(),
         logout: jest.fn().mockResolvedValue({ ok: true, data: {} }),
         ...overrides?.authAgent,
       };
@@ -892,15 +891,15 @@ describe('SideKit', () => {
     it('verifyOtp persists the session and updates auth state', async () => {
       const { mockSettingsStore } = await setupAuth({
         authAgent: {
-          otpVerify: jest
+          verifyOtp: jest
             .fn()
-            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user } }),
+            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user, newUser: true } }),
         },
       });
 
-      const res = await sideKit.verifyOtp({ requestId: 'otp_1', phone: PHONE, code: '123456' });
+      const res = await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '123456' });
 
-      expect(res).toEqual({ ok: true, data: user });
+      expect(res).toEqual({ ok: true, data: { user, isNewUser: true } });
       expect(sideKit.isAuthenticated).toBe(true);
       expect(sideKit.sessionToken).toBe('tok_xyz');
       expect(sideKit.authUser).toEqual(user);
@@ -914,11 +913,11 @@ describe('SideKit', () => {
     it('verifyOtp leaves state signed out on failure', async () => {
       await setupAuth({
         authAgent: {
-          otpVerify: jest.fn().mockResolvedValue({ ok: false, error: 'invalid_code', status: 401 }),
+          verifyOtp: jest.fn().mockResolvedValue({ ok: false, error: 'invalid_code', status: 401 }),
         },
       });
 
-      const res = await sideKit.verifyOtp({ requestId: 'otp_1', phone: PHONE, code: '000000' });
+      const res = await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '000000' });
 
       expect(res).toEqual({ ok: false, error: 'invalid_code', status: 401 });
       expect(sideKit.isAuthenticated).toBe(false);
@@ -941,13 +940,13 @@ describe('SideKit', () => {
     it('setHandle updates the local user on success', async () => {
       const { mockAuthAgent } = await setupAuth({
         authAgent: {
-          otpVerify: jest
+          verifyOtp: jest
             .fn()
-            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user } }),
+            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user, newUser: true } }),
           setHandle: jest.fn().mockResolvedValue({ ok: true, data: { handle: 'neo' } }),
         },
       });
-      await sideKit.verifyOtp({ requestId: 'otp_1', phone: PHONE, code: '123456' });
+      await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '123456' });
 
       const res = await sideKit.setHandle('neo');
 
@@ -966,12 +965,12 @@ describe('SideKit', () => {
     it('logout revokes server-side and clears local state', async () => {
       const { mockSettingsStore, mockAuthAgent } = await setupAuth({
         authAgent: {
-          otpVerify: jest
+          verifyOtp: jest
             .fn()
-            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user } }),
+            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user, newUser: true } }),
         },
       });
-      await sideKit.verifyOtp({ requestId: 'otp_1', phone: PHONE, code: '123456' });
+      await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '123456' });
 
       await sideKit.logout();
 

@@ -17,6 +17,8 @@ import type {
   AuthResult,
   AuthUser,
   AuthOtpResponse,
+  AuthChannel,
+  SignInResult,
   FeatureFlag,
 } from '../types';
 
@@ -309,43 +311,57 @@ export class SideKit {
   }
 
   /**
-   * Request a one-time passcode for a phone number (E.164). Returns the requestId to pass
-   * to verifyOtp, or an error code ('rate_limited', 'invalid_phone', etc.).
+   * Start signing a user in: send a one-time passcode to an identifier on the given
+   * channel (defaults to 'phone', E.164), then complete with verifyOtp. Passwordless, so
+   * the same call signs up a new user and signs in an existing one. Returns the requestId
+   * to pass to verifyOtp, or an error code ('rate_limited', 'invalid_phone', etc.).
    */
-  async requestOtp(
-    phone: string,
-    options?: { inviteCode?: string }
+  async signIn(
+    identifier: string,
+    options?: { channel?: AuthChannel; inviteCode?: string }
   ): Promise<AuthResult<AuthOtpResponse>> {
     if (!this.authAgent) {
       error('SDK not configured. Call configure() first.');
       return { ok: false, error: 'not_configured', status: 0 };
     }
-    return this.authAgent.otpSend(phone, options?.inviteCode);
+    return this.authAgent.signIn(
+      options?.channel ?? 'phone',
+      identifier,
+      options?.inviteCode
+    );
   }
 
   /**
-   * Verify an OTP code. On success the session + user are persisted, auth state is
-   * updated, and listeners are notified; the signed-in AuthUser is returned.
+   * Verify an OTP code. Pass the same identifier/channel used in signIn (channel
+   * defaults to 'phone'). On success the session + user are persisted, auth state is
+   * updated, and listeners are notified; returns the signed-in user plus `isNewUser`
+   * (true when this verify created the account).
    */
   async verifyOtp(params: {
     requestId: string;
-    phone: string;
+    identifier: string;
+    channel?: AuthChannel;
     code: string;
-  }): Promise<AuthResult<AuthUser>> {
+  }): Promise<AuthResult<SignInResult>> {
     if (!this.authAgent || !this.settingsStore) {
       error('SDK not configured. Call configure() first.');
       return { ok: false, error: 'not_configured', status: 0 };
     }
 
-    const result = await this.authAgent.otpVerify(params);
+    const result = await this.authAgent.verifyOtp({
+      requestId: params.requestId,
+      channel: params.channel ?? 'phone',
+      identifier: params.identifier,
+      code: params.code,
+    });
     if (!result.ok) {
       return result;
     }
 
-    const { sessionToken, expiresAt, user } = result.data;
+    const { sessionToken, expiresAt, user, newUser } = result.data;
     await this.applyAuthSession(sessionToken, user, expiresAt);
-    log(`Signed in as ${user.id}`);
-    return { ok: true, data: user };
+    log(`Signed in as ${user.id} (newUser: ${newUser})`);
+    return { ok: true, data: { user, isNewUser: newUser } };
   }
 
   /**
@@ -368,23 +384,6 @@ export class SideKit {
       this.notifyListeners();
     }
     return result;
-  }
-
-  /**
-   * Attach a recovery email to the signed-in user. Returns 'email_taken' (409) on
-   * conflict, 'unauthorized' if signed out.
-   */
-  async setRecoveryEmail(
-    email: string
-  ): Promise<AuthResult<{ email: string }>> {
-    if (!this.authAgent) {
-      error('SDK not configured. Call configure() first.');
-      return { ok: false, error: 'not_configured', status: 0 };
-    }
-    if (!this._sessionToken) {
-      return { ok: false, error: 'unauthorized', status: 401 };
-    }
-    return this.authAgent.setEmail(this._sessionToken, email);
   }
 
   /**

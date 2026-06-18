@@ -134,11 +134,11 @@ export function useSideKit(): SideKitState {
   }, []);
 
   // Auth methods (bound to the singleton; state updates arrive via subscribe)
-  const requestOtp = useCallback(
+  const signIn = useCallback(
     (
-      phone: Parameters<typeof SideKit.shared.requestOtp>[0],
-      options?: Parameters<typeof SideKit.shared.requestOtp>[1]
-    ) => SideKit.shared.requestOtp(phone, options),
+      identifier: Parameters<typeof SideKit.shared.signIn>[0],
+      options?: Parameters<typeof SideKit.shared.signIn>[1]
+    ) => SideKit.shared.signIn(identifier, options),
     []
   );
 
@@ -150,11 +150,6 @@ export function useSideKit(): SideKitState {
 
   const setHandle = useCallback(
     (handle: string) => SideKit.shared.setHandle(handle),
-    []
-  );
-
-  const setRecoveryEmail = useCallback(
-    (email: string) => SideKit.shared.setRecoveryEmail(email),
     []
   );
 
@@ -170,10 +165,9 @@ export function useSideKit(): SideKitState {
     refreshFlags,
     dismissUpdateGate,
     setAnalyticsEnabled,
-    requestOtp,
+    signIn,
     verifyOtp,
     setHandle,
-    setRecoveryEmail,
     logout,
   };
 }
