@@ -1,6 +1,6 @@
 {
   "name": "@sidekit/react-native",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "SideKit Expo/React Native SDK for version gating, analytics, and end-user auth",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -20,6 +20,7 @@
     "typescript": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "prepare": "bob build",
+    "prepublishOnly": "npm run clean && npm run prepare && node scripts/verify-build.js",
     "clean": "rm -rf lib"
   },
   "keywords": [
