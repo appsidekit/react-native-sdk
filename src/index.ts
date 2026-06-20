@@ -153,6 +153,11 @@ export function useSideKit(): SideKitState {
     []
   );
 
+  const lookupHandle = useCallback(
+    (handle: string) => SideKit.shared.lookupHandle(handle),
+    []
+  );
+
   const logout = useCallback(() => SideKit.shared.logout(), []);
 
   return {
@@ -168,6 +173,7 @@ export function useSideKit(): SideKitState {
     signIn,
     verifyOtp,
     setHandle,
+    lookupHandle,
     logout,
   };
 }

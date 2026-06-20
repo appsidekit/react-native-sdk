@@ -200,6 +200,13 @@ export interface SideKitState {
   /** Set the signed-in user's handle. Returns 'handle_taken' on conflict. */
   setHandle: (handle: string) => Promise<AuthResult<{ handle: string }>>;
 
+  /**
+   * Resolve a handle to its user within this app — `{ id, handle, createdAt }` — for
+   * social features like adding a friend by handle. On a handle nobody has claimed,
+   * fails with `error: 'user_not_found'` (status 404). Requires being signed in.
+   */
+  lookupHandle: (handle: string) => Promise<AuthResult<AuthUser>>;
+
   /** Sign out: revoke the session server-side (best-effort) and clear local auth state. */
   logout: () => Promise<void>;
 

@@ -387,6 +387,24 @@ export class SideKit {
   }
 
   /**
+   * Resolve a handle to its user within this app (for social features like adding a
+   * friend by handle). Read-only — does not touch local auth state. Returns the user
+   * on success, 'user_not_found' (404) if no one has claimed that handle, or
+   * 'unauthorized' if signed out.
+   */
+  async lookupHandle(handle: string): Promise<AuthResult<AuthUser>> {
+    if (!this.authAgent) {
+      error('SDK not configured. Call configure() first.');
+      return { ok: false, error: 'not_configured', status: 0 };
+    }
+    if (!this._sessionToken) {
+      return { ok: false, error: 'unauthorized', status: 401 };
+    }
+
+    return this.authAgent.lookupHandle(this._sessionToken, handle);
+  }
+
+  /**
    * Sign out. Revokes the session server-side (best-effort) and always clears local auth
    * state — a network failure still signs the user out locally.
    */

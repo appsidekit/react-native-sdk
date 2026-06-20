@@ -133,6 +133,44 @@ describe('AuthAgent', () => {
     });
   });
 
+  describe('lookupHandle', () => {
+    it('GETs /v1/auth/user with the Bearer token and url-encoded handle', async () => {
+      const user = { id: 'u_2', handle: 'neo', createdAt: 100 };
+      (global.fetch as jest.Mock).mockResolvedValue(okJson(user));
+
+      const res = await agent.lookupHandle('tok_xyz', 'neo');
+
+      expect(res).toEqual({ ok: true, data: user });
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.appsidekit.com/v1/auth/user?handle=neo',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ Authorization: 'Bearer tok_xyz' }),
+          body: undefined,
+        })
+      );
+    });
+
+    it('url-encodes the handle in the query string', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(okJson({ id: 'u_3', handle: 'a_b', createdAt: 1 }));
+
+      await agent.lookupHandle('tok_xyz', 'a b');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.appsidekit.com/v1/auth/user?handle=a%20b',
+        expect.objectContaining({ method: 'GET' })
+      );
+    });
+
+    it('maps a 404 to user_not_found', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(errText(404, 'user_not_found'));
+
+      const res = await agent.lookupHandle('tok_xyz', 'ghost');
+
+      expect(res).toEqual({ ok: false, error: 'user_not_found', status: 404, retryAfter: undefined });
+    });
+  });
+
   describe('logout', () => {
     it('POSTs with the Bearer token and no body', async () => {
       (global.fetch as jest.Mock).mockResolvedValue(okJson({}));

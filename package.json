@@ -1,6 +1,6 @@
 {
   "name": "@sidekit/react-native",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "SideKit Expo/React Native SDK for version gating, analytics, and end-user auth",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",

@@ -13,6 +13,7 @@ import type {
   AuthOtpResponse,
   AuthVerifyResponse,
   AuthChannel,
+  AuthUser,
 } from '../types';
 
 const API_BASE_URL = 'https://api.appsidekit.com';
@@ -76,6 +77,21 @@ export class AuthAgent {
   /** POST /v1/auth/logout — revoke the session (Bearer). Idempotent. */
   logout(token: string): Promise<AuthResult<Record<string, never>>> {
     return this.call('POST', '/logout', undefined, token);
+  }
+
+  /**
+   * GET /v1/auth/user?handle= — resolve a handle to its user within the app (Bearer).
+   * For social features (e.g. adding a friend by handle). On success `data` is the
+   * user ({id, handle, createdAt}); a handle nobody has claimed comes back as
+   * `{ ok: false, error: 'user_not_found', status: 404 }`.
+   */
+  lookupHandle(token: string, handle: string): Promise<AuthResult<AuthUser>> {
+    return this.call(
+      'GET',
+      `/user?handle=${encodeURIComponent(handle)}`,
+      undefined,
+      token
+    );
   }
 
   /**
