@@ -39,3 +39,6 @@ plan/
 
 # Misc
 *.tgz
+
+# Claude
+CLAUDE.md

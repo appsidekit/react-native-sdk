@@ -46,7 +46,12 @@ export class SettingsStore {
   }
 
   private writeSession(json: string): Promise<void> {
-    return SecureStore.setItemAsync(KEYS.AUTH_SESSION, json);
+    return SecureStore.setItemAsync(KEYS.AUTH_SESSION, json, {
+      // Device-bound (excluded from backups and device restore) and readable
+      // after first unlock so a background refresh works while the screen is
+      // locked. iOS only; the Android Keystore is always device-bound.
+      keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+    });
   }
 
   private deleteSession(): Promise<void> {
