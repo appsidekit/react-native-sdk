@@ -309,4 +309,84 @@ describe('Meerkat', () => {
       await expect(agent.sendFeedback('hello')).resolves.toBe(false);
     });
   });
+
+  describe('registerPushDevice', () => {
+    it('should POST the token with storeType, environment, locale, and timezone', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
+
+      const ok = await agent.registerPushDevice({
+        deviceToken: 'native-token',
+        environment: 'sandbox',
+      });
+
+      expect(ok).toBe(true);
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toBe('https://api.appsidekit.com/v1/push/register');
+      expect(init.method).toBe('POST');
+      expect(init.headers['API-Key']).toBe('test-api-key');
+      expect(init.headers).not.toHaveProperty('Authorization');
+
+      const body = JSON.parse(init.body);
+      expect(body.deviceToken).toBe('native-token');
+      expect([0, 1]).toContain(body.storeType);
+      expect(body.environment).toBe('sandbox');
+    });
+
+    it('should attach a Bearer when a session token is provided', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
+
+      await agent.registerPushDevice({
+        deviceToken: 'native-token',
+        environment: 'production',
+        sessionToken: 'tok_xyz',
+      });
+
+      const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(init.headers.Authorization).toBe('Bearer tok_xyz');
+    });
+
+    it('should return false on API error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+      });
+
+      await expect(
+        agent.registerPushDevice({ deviceToken: 't', environment: 'production' })
+      ).resolves.toBe(false);
+    });
+
+    it('should return false on network error without throwing', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+      await expect(
+        agent.registerPushDevice({ deviceToken: 't', environment: 'production' })
+      ).resolves.toBe(false);
+    });
+  });
+
+  describe('unregisterPushDevice', () => {
+    it('should DELETE with the device token in the body', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({ ok: true, status: 200 });
+
+      const ok = await agent.unregisterPushDevice('native-token');
+
+      expect(ok).toBe(true);
+      const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+      expect(url).toBe('https://api.appsidekit.com/v1/push/register');
+      expect(init.method).toBe('DELETE');
+      expect(JSON.parse(init.body)).toEqual({ deviceToken: 'native-token' });
+    });
+
+    it('should return false on API error', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      });
+
+      await expect(agent.unregisterPushDevice('t')).resolves.toBe(false);
+    });
+  });
 });

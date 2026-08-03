@@ -1,4 +1,8 @@
-import { Signal as SignalType, SignalPayload as SignalPayloadType } from '../types';
+import {
+  Signal as SignalType,
+  SignalPayload as SignalPayloadType,
+  DeviceMetadata,
+} from '../types';
 
 /**
  * Analytics signal
@@ -35,17 +39,7 @@ export class SignalPayload implements SignalPayloadType {
   deviceModel?: string;
   signals: SignalType[];
 
-  constructor(
-    metadata: {
-      osVersion?: string;
-      appVersion?: string;
-      country?: string;
-      language?: string;
-      platform?: string;
-      deviceModel?: string;
-    },
-    signals: SignalType[]
-  ) {
+  constructor(metadata: DeviceMetadata, signals: SignalType[]) {
     this.osVersion = metadata.osVersion;
     this.appVersion = metadata.appVersion;
     this.country = metadata.country;

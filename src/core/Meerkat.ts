@@ -13,10 +13,9 @@ import type { FeatureFlag } from '../types';
 import {
   getAppVersion,
   getPlatform,
-  getOSVersion,
-  getDeviceModel,
-  getCountryCode,
-  getLanguageCode,
+  getLocale,
+  getTimezone,
+  collectDeviceMetadata,
 } from '../utils/platform';
 
 // API configuration
@@ -25,21 +24,40 @@ const API_VERSION_ENDPOINT = '/v1/version';
 const API_SIGNALS_ENDPOINT = '/v1';
 const API_FEEDBACK_ENDPOINT = '/v1/feedback';
 const API_FLAGS_ENDPOINT = '/v1/flags';
+const API_PUSH_REGISTER_ENDPOINT = '/v1/push/register';
 
 /**
  * Meerkat — SideKit's API client. See file header.
  */
 export class Meerkat {
-  private apiKey: string;
+  private apiKey: string | null;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string | null = null) {
     this.apiKey = apiKey;
+  }
+
+  /**
+   * The API key, or null with a clear error when constructed unconfigured. Every
+   * public method calls this first, so a call that lands before SideKit.configure()
+   * fails loudly in one place instead of needing a null check at each call site.
+   */
+  private requireApiKey(): string | null {
+    if (!this.apiKey) {
+      error(
+        'SideKit is not configured — call SideKit.shared.configure(apiKey) first'
+      );
+    }
+    return this.apiKey;
   }
 
   /**
    * Get gate information from API
    */
   async getGateInformation(): Promise<GateInformation | null> {
+    const apiKey = this.requireApiKey();
+    if (!apiKey) {
+      return null;
+    }
     try {
       const platform = getPlatform();
       const appVersion = getAppVersion();
@@ -62,7 +80,7 @@ export class Meerkat {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'API-Key': this.apiKey,
+          'API-Key': apiKey,
         },
       });
 
@@ -88,6 +106,10 @@ export class Meerkat {
    * fall back to cached flags.
    */
   async getFlags(): Promise<FeatureFlag[] | null> {
+    const apiKey = this.requireApiKey();
+    if (!apiKey) {
+      return null;
+    }
     try {
       const url = `${API_BASE_URL}${API_FLAGS_ENDPOINT}`;
       log(`Fetching feature flags from ${url}`);
@@ -97,7 +119,7 @@ export class Meerkat {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'API-Key': this.apiKey,
+          'API-Key': apiKey,
         },
       });
 
@@ -126,17 +148,12 @@ export class Meerkat {
    * Send analytics signals to API
    */
   async sendSignals(signals: Array<{ name: string; value: string }>): Promise<void> {
+    const apiKey = this.requireApiKey();
+    if (!apiKey) {
+      return;
+    }
     try {
-      const metadata = {
-        osVersion: getOSVersion() || undefined,
-        appVersion: getAppVersion() || undefined,
-        country: getCountryCode() || undefined,
-        language: getLanguageCode() || undefined,
-        platform: getPlatform() || undefined,
-        deviceModel: getDeviceModel() || undefined,
-      };
-
-      const payload = new SignalPayload(metadata, signals);
+      const payload = new SignalPayload(collectDeviceMetadata(), signals);
 
       const url = `${API_BASE_URL}${API_SIGNALS_ENDPOINT}`;
       log(`Sending ${signals.length} signal(s) to ${url}`, signals);
@@ -146,7 +163,7 @@ export class Meerkat {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'API-Key': this.apiKey,
+          'API-Key': apiKey,
         },
         body: JSON.stringify(payload.toJSON()),
       });
@@ -174,17 +191,16 @@ export class Meerkat {
     endUserId?: string,
     userAttributes?: Record<string, string>
   ): Promise<boolean> {
+    const apiKey = this.requireApiKey();
+    if (!apiKey) {
+      return false;
+    }
     try {
       const payload = {
         feedbackText,
         endUserId: endUserId || undefined,
         userAttributes: userAttributes || undefined,
-        platform: getPlatform() || undefined,
-        appVersion: getAppVersion() || undefined,
-        osVersion: getOSVersion() || undefined,
-        country: getCountryCode() || undefined,
-        language: getLanguageCode() || undefined,
-        deviceModel: getDeviceModel() || undefined,
+        ...collectDeviceMetadata(),
       };
 
       const url = `${API_BASE_URL}${API_FEEDBACK_ENDPOINT}`;
@@ -195,7 +211,7 @@ export class Meerkat {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
-          'API-Key': this.apiKey,
+          'API-Key': apiKey,
         },
         body: JSON.stringify(payload),
       });
@@ -211,6 +227,107 @@ export class Meerkat {
       return false;
     } catch (err) {
       error('Failed to send feedback', err);
+      return false;
+    }
+  }
+
+  /**
+   * Register this device for push (POST /v1/push/register). Locale/timezone are
+   * attached automatically; a session token (when provided) binds the registration
+   * to the signed-in end user for targeted sends.
+   *
+   * Resolves to true when registered (HTTP 2xx), false otherwise. Never throws.
+   */
+  async registerPushDevice(params: {
+    deviceToken: string;
+    environment: 'production' | 'sandbox';
+    sessionToken?: string | null;
+  }): Promise<boolean> {
+    const apiKey = this.requireApiKey();
+    if (!apiKey) {
+      return false;
+    }
+    try {
+      const platform = getPlatform();
+      if (!platform) {
+        error('Push registration is not supported on this platform');
+        return false;
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'API-Key': apiKey,
+      };
+      if (params.sessionToken) {
+        headers.Authorization = `Bearer ${params.sessionToken}`;
+      }
+
+      const url = `${API_BASE_URL}${API_PUSH_REGISTER_ENDPOINT}`;
+      log(`Registering push device (${params.environment}) at ${url}`);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          deviceToken: params.deviceToken,
+          storeType: platform === 'ios' ? 0 : 1,
+          environment: params.environment,
+          locale: getLocale() || undefined,
+          timezone: getTimezone() || undefined,
+        }),
+      });
+
+      if (response.ok) {
+        log(`Push device registered (${response.status})`);
+        return true;
+      }
+      error(
+        `Failed to register push device: ${response.status} ${response.statusText}`
+      );
+      return false;
+    } catch (err) {
+      error('Failed to register push device', err);
+      return false;
+    }
+  }
+
+  /**
+   * Unbind the signed-in user from this device (DELETE /v1/push/register), called on
+   * logout. The device stays registered for broadcasts; a later signed-in
+   * registration re-binds it.
+   *
+   * Resolves to true on HTTP 2xx, false otherwise. Never throws.
+   */
+  async unregisterPushDevice(deviceToken: string): Promise<boolean> {
+    const apiKey = this.requireApiKey();
+    if (!apiKey) {
+      return false;
+    }
+    try {
+      const url = `${API_BASE_URL}${API_PUSH_REGISTER_ENDPOINT}`;
+      log(`Unbinding push device at ${url}`);
+
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'API-Key': apiKey,
+        },
+        body: JSON.stringify({ deviceToken }),
+      });
+
+      if (response.ok) {
+        log(`Push device unbound (${response.status})`);
+        return true;
+      }
+      error(
+        `Failed to unbind push device: ${response.status} ${response.statusText}`
+      );
+      return false;
+    } catch (err) {
+      error('Failed to unbind push device', err);
       return false;
     }
   }

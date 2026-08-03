@@ -184,7 +184,8 @@ describe('SettingsStore', () => {
       await store.setAuthSession(session);
       expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
         'sk_auth_session',
-        JSON.stringify(session)
+        JSON.stringify(session),
+        { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY }
       );
       expect(AsyncStorage.setItem).not.toHaveBeenCalledWith(
         'sk_auth_session',

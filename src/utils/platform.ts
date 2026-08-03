@@ -5,6 +5,7 @@
 import { Platform, Linking } from 'react-native';
 import * as Application from 'expo-application';
 import * as Device from 'expo-device';
+import type { DeviceMetadata } from '../types';
 
 /**
  * Get the current app version
@@ -78,6 +79,66 @@ export function getLanguageCode(): string | null {
     // Fallback
   }
   return null;
+}
+
+/**
+ * Which APNs host this build's push tokens belong to. Driven by the provisioning
+ * type, not __DEV__: a Release-configuration build signed with a development
+ * profile still mints sandbox tokens.
+ */
+export async function getApnsEnvironment(): Promise<'production' | 'sandbox'> {
+  if (Platform.OS !== 'ios') {
+    return 'production'; // FCM has no sandbox split
+  }
+  try {
+    const releaseType = await Application.getIosApplicationReleaseTypeAsync();
+    return releaseType === Application.ApplicationReleaseType.DEVELOPMENT ||
+      releaseType === Application.ApplicationReleaseType.SIMULATOR
+      ? 'sandbox'
+      : 'production';
+  } catch {
+    // Fall back to the build flag when the release type can't be read.
+    return typeof __DEV__ !== 'undefined' && __DEV__ ? 'sandbox' : 'production';
+  }
+}
+
+/**
+ * Get the full locale tag (e.g. "en-US")
+ * @returns Locale string
+ */
+export function getLocale(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Get the IANA timezone (e.g. "America/New_York")
+ * @returns Timezone string
+ */
+export function getTimezone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * The device metadata block attached to signal and feedback payloads.
+ * Unavailable fields resolve to undefined and drop out of the JSON body.
+ */
+export function collectDeviceMetadata(): DeviceMetadata {
+  return {
+    osVersion: getOSVersion() || undefined,
+    appVersion: getAppVersion() || undefined,
+    country: getCountryCode() || undefined,
+    language: getLanguageCode() || undefined,
+    platform: getPlatform() || undefined,
+    deviceModel: getDeviceModel() || undefined,
+  };
 }
 
 /**

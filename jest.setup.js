@@ -37,6 +37,15 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 // Mock Expo Application
 jest.mock('expo-application', () => ({
   nativeApplicationVersion: '1.0.0',
+  ApplicationReleaseType: {
+    UNKNOWN: 0,
+    SIMULATOR: 1,
+    ENTERPRISE: 2,
+    DEVELOPMENT: 3,
+    AD_HOC: 4,
+    APP_STORE: 5,
+  },
+  getIosApplicationReleaseTypeAsync: jest.fn(async () => 3), // DEVELOPMENT
 }));
 
 // Mock Expo Device
@@ -55,6 +64,9 @@ jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(() => Promise.resolve(null)),
   setItemAsync: jest.fn(() => Promise.resolve()),
   deleteItemAsync: jest.fn(() => Promise.resolve()),
+  // Accessibility constants come from the native module, so they need explicit
+  // mock values — otherwise code referencing them passes undefined in tests.
+  AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 'AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY',
 }));
 
 // Mock fetch

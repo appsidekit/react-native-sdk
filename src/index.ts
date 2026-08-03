@@ -160,6 +160,14 @@ export function useSideKit(): SideKitState {
 
   const logout = useCallback(() => SideKit.shared.logout(), []);
 
+  const registerForPush = useCallback(
+    (
+      deviceToken: string,
+      options?: Parameters<typeof SideKit.shared.registerForPush>[1]
+    ) => SideKit.shared.registerForPush(deviceToken, options),
+    []
+  );
+
   return {
     ...state,
     sendSignal,
@@ -175,5 +183,6 @@ export function useSideKit(): SideKitState {
     setHandle,
     lookupHandle,
     logout,
+    registerForPush,
   };
 }

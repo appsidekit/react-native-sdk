@@ -10,7 +10,7 @@ import { AuthAgent } from './AuthAgent';
 import { GateInformation } from '../models/GateInformation';
 import { Signal } from '../models/Signal';
 import { subscribeToLifecycle } from '../utils/lifecycle';
-import { getAppVersion } from '../utils/platform';
+import { getApnsEnvironment, getAppVersion } from '../utils/platform';
 import { log, error, setVerbose } from '../utils/logger';
 import type {
   ConfigOptions,
@@ -34,10 +34,13 @@ export class SideKit {
   // Configuration
   private isConfigured = false;
 
-  // Dependencies
-  private settingsStore?: SettingsStore;
-  private meerkat?: Meerkat;
-  private authAgent?: AuthAgent;
+  // Dependencies. Always present — constructed unconfigured (no API key) and
+  // replaced by configure(), so call sites never null-check them. A call that
+  // lands before configure() reaches the component, which reports "not
+  // configured" itself and returns its failure value.
+  private settingsStore = new SettingsStore();
+  private meerkat = new Meerkat();
+  private authAgent = new AuthAgent();
 
   // State
   public showUpdateScreen = false;
@@ -49,6 +52,14 @@ export class SideKit {
   private _authUser: AuthUser | null = null;
   private _sessionToken: string | null = null;
   private _sessionExpiresAt: number | null = null;
+
+  // Push state. In-memory only: the app calls registerForPush each launch (that's the
+  // liveness signal), so there's nothing worth persisting. A call that lands before
+  // configure() completes is deferred, not dropped — child effects run before the
+  // provider's configure effect, so launch-time registration would otherwise always race.
+  private _pushToken: string | null = null;
+  private _pushEnvironment: 'production' | 'sandbox' = 'production';
+  private _pushRegistrationPending = false;
 
   // Lifecycle
   private lifecycleUnsubscribe?: () => void;
@@ -136,6 +147,15 @@ export class SideKit {
     // Send app open signal
     this.sendSignals([{ key: '_app_open' }]);
 
+    // Flush a registerForPush that landed while configuring (fire-and-forget).
+    // After restoreAuthSession, so a restored session binds its user.
+    if (this._pushRegistrationPending) {
+      this._pushRegistrationPending = false;
+      this.performPushRegistration().catch((err) =>
+        error('Deferred push registration failed', err)
+      );
+    }
+
     log('SDK configuration complete');
   }
 
@@ -150,11 +170,6 @@ export class SideKit {
 
     if (!this._isAnalyticsEnabled) {
       log(`Analytics disabled, skipping ${signals.length} signal(s)`);
-      return;
-    }
-
-    if (!this.meerkat) {
-      error('Meerkat (API client) not initialized');
       return;
     }
 
@@ -186,11 +201,6 @@ export class SideKit {
     feedbackText: string,
     options?: { endUserId?: string; userAttributes?: Record<string, string> }
   ): Promise<boolean> {
-    if (!this.isConfigured || !this.meerkat) {
-      error('SDK not configured. Call configure() first.');
-      return false;
-    }
-
     const endUserId = options?.endUserId ?? this._authUser?.id ?? undefined;
     return this.meerkat.sendFeedback(
       feedbackText,
@@ -217,11 +227,9 @@ export class SideKit {
 
     this._isAnalyticsEnabled = enabled;
 
-    if (this.settingsStore) {
-      this.settingsStore.setAnalyticsEnabled(enabled).catch((err) => {
-        error('Failed to persist analytics enabled state', err);
-      });
-    }
+    this.settingsStore.setAnalyticsEnabled(enabled).catch((err) => {
+      error('Failed to persist analytics enabled state', err);
+    });
 
     log(`Analytics ${enabled ? 'enabled' : 'disabled'}`);
     this.notifyListeners();
@@ -268,7 +276,9 @@ export class SideKit {
    * failure. Updates `flags` and notifies listeners.
    */
   async refreshFlags(): Promise<void> {
-    if (!this.meerkat || !this.settingsStore) {
+    // Guarded here (not just in Meerkat) so an early call can't populate flags
+    // from a stale cache before configure() has run.
+    if (!this.isConfigured) {
       error('SDK not configured. Call configure() first.');
       return;
     }
@@ -289,6 +299,85 @@ export class SideKit {
       log(`Using ${cached.length} cached flags (server unavailable)`);
       this.notifyListeners();
     }
+  }
+
+  // ---- //
+  // PUSH //
+  // ---- //
+
+  /**
+   * Register this device for push notifications. Opt-in and explicit — the SDK never
+   * registers on its own. Call it only after your app has decided this user should
+   * receive push (typically right after the OS notification-permission grant), then on
+   * every launch: re-registration is how the server knows the device is still alive.
+   *
+   * Pass the NATIVE device token — the raw APNs token on iOS, the FCM registration
+   * token on Android — not an Expo push token (`ExponentPushToken[...]` is rejected).
+   *
+   * When an end user is signed in the registration is bound to them for targeted
+   * sends; the SDK re-binds automatically on later sign-in and unbinds on logout.
+   *
+   * Safe to call before configure() finishes — the registration is queued and
+   * performed the moment configuration completes (resolves true when queued).
+   *
+   * `environment` (iOS only) picks the APNs host the server delivers through. By
+   * default it's read from the build's provisioning type (development/simulator →
+   * sandbox, TestFlight/App Store/ad-hoc → production), which matches how the token
+   * was minted; override it only for exotic signing setups.
+   */
+  async registerForPush(
+    deviceToken: string,
+    options?: { environment?: 'production' | 'sandbox' }
+  ): Promise<boolean> {
+    if (!deviceToken || deviceToken.trim().length === 0) {
+      error('registerForPush: deviceToken is required');
+      return false;
+    }
+    if (deviceToken.startsWith('ExponentPushToken')) {
+      error(
+        'registerForPush: got an Expo push token — pass the native device token instead ' +
+          '(expo-notifications: getDevicePushTokenAsync(), not getExpoPushTokenAsync())'
+      );
+      return false;
+    }
+
+    this._pushToken = deviceToken;
+    this._pushEnvironment = options?.environment ?? (await getApnsEnvironment());
+
+    if (!this.isConfigured) {
+      log('registerForPush called before configure() — deferred until configuration completes');
+      this._pushRegistrationPending = true;
+      return true;
+    }
+    return this.performPushRegistration();
+  }
+
+  /**
+   * Register the stashed token with the current auth state. Shared by the direct
+   * call, the deferred-at-configure flush, and the sign-in re-bind.
+   */
+  private async performPushRegistration(): Promise<boolean> {
+    if (!this._pushToken) {
+      return false;
+    }
+    return this.meerkat.registerPushDevice({
+      deviceToken: this._pushToken,
+      environment: this._pushEnvironment,
+      sessionToken: this._sessionToken,
+    });
+  }
+
+  /**
+   * Re-register the known device token after auth changes (sign-in binds the user,
+   * and registering with a Bearer is the only way to bind). Fire-and-forget.
+   */
+  private rebindPushToken(): void {
+    if (!this._pushToken) {
+      return;
+    }
+    this.performPushRegistration().catch((err) =>
+      error('Failed to re-bind push registration', err)
+    );
   }
 
   // ---- //
@@ -320,10 +409,6 @@ export class SideKit {
     identifier: string,
     options?: { channel?: AuthChannel; inviteCode?: string }
   ): Promise<AuthResult<AuthOtpResponse>> {
-    if (!this.authAgent) {
-      error('SDK not configured. Call configure() first.');
-      return { ok: false, error: 'not_configured', status: 0 };
-    }
     return this.authAgent.signIn(
       options?.channel ?? 'phone',
       identifier,
@@ -343,11 +428,6 @@ export class SideKit {
     channel?: AuthChannel;
     code: string;
   }): Promise<AuthResult<SignInResult>> {
-    if (!this.authAgent || !this.settingsStore) {
-      error('SDK not configured. Call configure() first.');
-      return { ok: false, error: 'not_configured', status: 0 };
-    }
-
     const result = await this.authAgent.verifyOtp({
       requestId: params.requestId,
       channel: params.channel ?? 'phone',
@@ -360,6 +440,7 @@ export class SideKit {
 
     const { sessionToken, expiresAt, user, newUser } = result.data;
     await this.applyAuthSession(sessionToken, user, expiresAt);
+    this.rebindPushToken(); // bind the push registration to the now-signed-in user
     log(`Signed in as ${user.id} (newUser: ${newUser})`);
     return { ok: true, data: { user, isNewUser: newUser } };
   }
@@ -369,10 +450,6 @@ export class SideKit {
    * notified. Returns 'handle_taken' (409) on conflict, 'unauthorized' if signed out.
    */
   async setHandle(handle: string): Promise<AuthResult<{ handle: string }>> {
-    if (!this.authAgent) {
-      error('SDK not configured. Call configure() first.');
-      return { ok: false, error: 'not_configured', status: 0 };
-    }
     if (!this._sessionToken) {
       return { ok: false, error: 'unauthorized', status: 401 };
     }
@@ -393,10 +470,6 @@ export class SideKit {
    * 'unauthorized' if signed out.
    */
   async lookupHandle(handle: string): Promise<AuthResult<AuthUser>> {
-    if (!this.authAgent) {
-      error('SDK not configured. Call configure() first.');
-      return { ok: false, error: 'not_configured', status: 0 };
-    }
     if (!this._sessionToken) {
       return { ok: false, error: 'unauthorized', status: 401 };
     }
@@ -410,15 +483,20 @@ export class SideKit {
    */
   async logout(): Promise<void> {
     const token = this._sessionToken;
-    if (token && this.authAgent) {
+    if (token) {
       await this.authAgent.logout(token); // best-effort; revoke is idempotent
+    }
+    // Unbind the push registration from the user (best-effort). The device keeps
+    // receiving broadcasts; the token is kept so a later sign-in re-binds it.
+    if (this._pushToken) {
+      this.meerkat
+        .unregisterPushDevice(this._pushToken)
+        .catch((err) => error('Failed to unbind push registration', err));
     }
     this._authUser = null;
     this._sessionToken = null;
     this._sessionExpiresAt = null;
-    if (this.settingsStore) {
-      await this.settingsStore.clearAuthSession();
-    }
+    await this.settingsStore.clearAuthSession();
     log('Signed out');
     this.notifyListeners();
   }
@@ -427,9 +505,6 @@ export class SideKit {
    * Restore a persisted session on configure. An expired session is dropped.
    */
   private async restoreAuthSession(): Promise<void> {
-    if (!this.settingsStore) {
-      return;
-    }
     const session = await this.settingsStore.getAuthSession();
     if (!session) {
       return;
@@ -456,9 +531,7 @@ export class SideKit {
     this._sessionToken = token;
     this._authUser = user;
     this._sessionExpiresAt = expiresAt;
-    if (this.settingsStore) {
-      await this.settingsStore.setAuthSession({ token, user, expiresAt });
-    }
+    await this.settingsStore.setAuthSession({ token, user, expiresAt });
     this.notifyListeners();
   }
 
@@ -467,7 +540,6 @@ export class SideKit {
    */
   private async persistCurrentSession(): Promise<void> {
     if (
-      this.settingsStore &&
       this._sessionToken &&
       this._authUser &&
       this._sessionExpiresAt !== null
@@ -537,10 +609,6 @@ export class SideKit {
    * Check version compliance
    */
   private async checkVersionCompliance(): Promise<void> {
-    if (!this.meerkat || !this.settingsStore) {
-      return;
-    }
-
     log('Checking version compliance...');
 
     // Get old cached gate BEFORE fetching new one (to detect if gate has changed)
@@ -605,21 +673,15 @@ export class SideKit {
     ]);
 
     // Cache gate information
-    if (this.settingsStore) {
-      this.settingsStore.setCachedGateInformation(gateInfo).catch((err) => {
-        error('Failed to cache gate information', err);
-      });
-    }
+    this.settingsStore.setCachedGateInformation(gateInfo).catch((err) => {
+      error('Failed to cache gate information', err);
+    });
   }
 
   /**
    * Fetch gate information (network + cache fallback)
    */
   private async fetchGateInformation(): Promise<GateInformation | null> {
-    if (!this.meerkat || !this.settingsStore) {
-      return null;
-    }
-
     // Try to fetch from API
     const gateInfo = await this.meerkat.getGateInformation();
 
@@ -676,9 +738,9 @@ export class SideKit {
   reset(): void {
     this.cleanup();
     this.isConfigured = false;
-    this.settingsStore = undefined;
-    this.meerkat = undefined;
-    this.authAgent = undefined;
+    this.settingsStore = new SettingsStore();
+    this.meerkat = new Meerkat();
+    this.authAgent = new AuthAgent();
     this.showUpdateScreen = false;
     this.gateInformation = null;
     this._isAnalyticsEnabled = true;
@@ -686,6 +748,9 @@ export class SideKit {
     this._authUser = null;
     this._sessionToken = null;
     this._sessionExpiresAt = null;
+    this._pushToken = null;
+    this._pushEnvironment = 'production';
+    this._pushRegistrationPending = false;
     this.listeners.clear();
     log('SDK reset');
   }

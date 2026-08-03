@@ -48,15 +48,21 @@ export interface Signal {
 }
 
 /**
- * Signal payload sent to API
+ * Device metadata attached to signal and feedback payloads
  */
-export interface SignalPayload {
+export interface DeviceMetadata {
   osVersion?: string;
   appVersion?: string;
   country?: string;
   language?: string;
   platform?: string;
   deviceModel?: string;
+}
+
+/**
+ * Signal payload sent to API
+ */
+export interface SignalPayload extends DeviceMetadata {
   signals: Signal[];
 }
 
@@ -209,6 +215,29 @@ export interface SideKitState {
 
   /** Sign out: revoke the session server-side (best-effort) and clear local auth state. */
   logout: () => Promise<void>;
+
+  /**
+   * Register this device for push notifications. Opt-in and explicit — call it only
+   * after your app has decided this user should receive push (typically right after
+   * the OS notification-permission grant), then on every launch to keep the
+   * registration alive. Pass the NATIVE device token (raw APNs token on iOS, FCM
+   * registration token on Android), not an Expo push token.
+   *
+   * When an end user is signed in, the registration is bound to them for targeted
+   * sends; the SDK re-binds on sign-in and unbinds on logout automatically. Safe to
+   * call before the SDK finishes configuring — registration is queued and performed
+   * once configuration completes.
+   *
+   * @example
+   * ```typescript
+   * const token = (await Notifications.getDevicePushTokenAsync()).data;
+   * await registerForPush(token);
+   * ```
+   */
+  registerForPush: (
+    deviceToken: string,
+    options?: { environment?: 'production' | 'sandbox' }
+  ) => Promise<boolean>;
 
   /**
    * Get whether analytics tracking is currently enabled.

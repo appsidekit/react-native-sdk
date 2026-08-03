@@ -119,7 +119,7 @@ describe('SideKit', () => {
     it('should send single signal with key only', () => {
       sideKit.sendSignals([{ key: 'button_clicked' }]);
 
-      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results.slice(-1)[0]
         .value;
       expect(mockInstance.sendSignals).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -131,7 +131,7 @@ describe('SideKit', () => {
     it('should send single signal with key and value', () => {
       sideKit.sendSignals([{ key: 'button_clicked', value: 'signup' }]);
 
-      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results.slice(-1)[0]
         .value;
       expect(mockInstance.sendSignals).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -150,7 +150,7 @@ describe('SideKit', () => {
         { key: 'feature_used' },
       ]);
 
-      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results.slice(-1)[0]
         .value;
       expect(mockInstance.sendSignals).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -165,7 +165,7 @@ describe('SideKit', () => {
       sideKit.isAnalyticsEnabled = false;
       sideKit.sendSignals([{ key: 'test_event' }]);
 
-      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results.slice(-1)[0]
         .value;
       const calls = mockInstance.sendSignals.mock.calls;
 
@@ -180,7 +180,7 @@ describe('SideKit', () => {
     it('should handle empty signals array', () => {
       sideKit.sendSignals([]);
 
-      const mockInstance = (Meerkat as jest.Mock).mock.results[0]
+      const mockInstance = (Meerkat as jest.Mock).mock.results.slice(-1)[0]
         .value;
       expect(mockInstance.sendSignals).toHaveBeenCalledWith([]);
     });
@@ -226,7 +226,7 @@ describe('SideKit', () => {
       sideKit.isAnalyticsEnabled = false;
       expect(sideKit.isAnalyticsEnabled).toBe(false);
 
-      const mockInstance = (SettingsStore as jest.Mock).mock.results[0].value;
+      const mockInstance = (SettingsStore as jest.Mock).mock.results.slice(-1)[0].value;
       expect(mockInstance.setAnalyticsEnabled).toHaveBeenCalledWith(false);
     });
   });
@@ -978,6 +978,167 @@ describe('SideKit', () => {
       expect(mockSettingsStore.clearAuthSession).toHaveBeenCalled();
       expect(sideKit.isAuthenticated).toBe(false);
       expect(sideKit.authUser).toBeNull();
+    });
+  });
+
+  describe('push', () => {
+    const PHONE = '+15555550100';
+    const user = { id: 'user_1', handle: null, createdAt: '2026-01-01T00:00:00Z' };
+    const OK_VERIFY = {
+      ok: true,
+      data: { sessionToken: 'tok_xyz', expiresAt: 9999, user, newUser: false },
+    };
+
+    async function setupPush(overrides?: {
+      authAgent?: Partial<Record<string, jest.Mock>>;
+    }) {
+      const mockSettingsStore = {
+        isAnalyticsEnabled: jest.fn().mockResolvedValue(true),
+        setAnalyticsEnabled: jest.fn().mockResolvedValue(undefined),
+        isFirstLaunch: jest.fn().mockResolvedValue(false),
+        markLaunched: jest.fn().mockResolvedValue(undefined),
+        getCachedGateInformation: jest.fn().mockResolvedValue(null),
+        getCachedFlags: jest.fn().mockResolvedValue(null),
+        setCachedFlags: jest.fn().mockResolvedValue(undefined),
+        setCachedGateInformation: jest.fn().mockResolvedValue(undefined),
+        getAuthSession: jest.fn().mockResolvedValue(null),
+        setAuthSession: jest.fn().mockResolvedValue(undefined),
+        clearAuthSession: jest.fn().mockResolvedValue(undefined),
+      };
+      (SettingsStore as jest.Mock).mockImplementation(() => mockSettingsStore);
+
+      const mockMeerkat = {
+        sendSignals: jest.fn().mockResolvedValue(undefined),
+        getGateInformation: jest.fn().mockResolvedValue(null),
+        getFlags: jest.fn().mockResolvedValue(null),
+        registerPushDevice: jest.fn().mockResolvedValue(true),
+        unregisterPushDevice: jest.fn().mockResolvedValue(true),
+      };
+      (Meerkat as jest.Mock).mockImplementation(() => mockMeerkat);
+
+      const mockAuthAgent = {
+        signIn: jest.fn(),
+        verifyOtp: jest.fn(),
+        setHandle: jest.fn(),
+        logout: jest.fn().mockResolvedValue({ ok: true, data: {} }),
+        ...overrides?.authAgent,
+      };
+      (AuthAgent as jest.Mock).mockImplementation(() => mockAuthAgent);
+
+      await sideKit.configure('test-api-key');
+      return { mockMeerkat, mockAuthAgent };
+    }
+
+    it('defers a pre-configure register and flushes it when configure completes', async () => {
+      // Launch order in a real app: the app's effect fires before the provider's
+      // configure() — the SDK must queue, not drop.
+      expect(await sideKit.registerForPush('apns-token')).toBe(true);
+
+      const { mockMeerkat } = await setupPush();
+      expect(mockMeerkat.registerPushDevice).toHaveBeenCalledTimes(1);
+      expect(mockMeerkat.registerPushDevice).toHaveBeenCalledWith(
+        expect.objectContaining({ deviceToken: 'apns-token' })
+      );
+    });
+
+    it('still rejects an invalid token before configure', async () => {
+      expect(await sideKit.registerForPush('')).toBe(false);
+      const { mockMeerkat } = await setupPush();
+      expect(mockMeerkat.registerPushDevice).not.toHaveBeenCalled();
+    });
+
+    it('registers anonymously when signed out (development provisioning = sandbox)', async () => {
+      const { mockMeerkat } = await setupPush();
+
+      expect(await sideKit.registerForPush('apns-token')).toBe(true);
+      expect(mockMeerkat.registerPushDevice).toHaveBeenCalledWith({
+        deviceToken: 'apns-token',
+        environment: 'sandbox', // jest.setup mocks a DEVELOPMENT release type
+        sessionToken: null,
+      });
+    });
+
+    it('registers as production for App Store provisioning', async () => {
+      const Application = require('expo-application');
+      (Application.getIosApplicationReleaseTypeAsync as jest.Mock).mockResolvedValueOnce(
+        Application.ApplicationReleaseType.APP_STORE
+      );
+      const { mockMeerkat } = await setupPush();
+
+      await sideKit.registerForPush('apns-token');
+      expect(mockMeerkat.registerPushDevice).toHaveBeenCalledWith(
+        expect.objectContaining({ environment: 'production' })
+      );
+    });
+
+    it('honors an explicit environment override', async () => {
+      const { mockMeerkat } = await setupPush();
+
+      await sideKit.registerForPush('apns-token', { environment: 'production' });
+      expect(mockMeerkat.registerPushDevice).toHaveBeenCalledWith(
+        expect.objectContaining({ environment: 'production' })
+      );
+    });
+
+    it('rejects an Expo push token with guidance instead of registering it', async () => {
+      const { mockMeerkat } = await setupPush();
+
+      expect(await sideKit.registerForPush('ExponentPushToken[abc123]')).toBe(false);
+      expect(mockMeerkat.registerPushDevice).not.toHaveBeenCalled();
+    });
+
+    it('attaches the session token when an end user is signed in', async () => {
+      const { mockMeerkat, mockAuthAgent } = await setupPush();
+      mockAuthAgent.verifyOtp.mockResolvedValue(OK_VERIFY);
+      await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '123456' });
+
+      await sideKit.registerForPush('apns-token');
+      expect(mockMeerkat.registerPushDevice).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionToken: 'tok_xyz' })
+      );
+    });
+
+    it('re-binds the known token when the user signs in after registering', async () => {
+      const { mockMeerkat, mockAuthAgent } = await setupPush();
+      await sideKit.registerForPush('apns-token');
+      expect(mockMeerkat.registerPushDevice).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sessionToken: null })
+      );
+
+      mockAuthAgent.verifyOtp.mockResolvedValue(OK_VERIFY);
+      await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '123456' });
+
+      expect(mockMeerkat.registerPushDevice).toHaveBeenCalledTimes(2);
+      expect(mockMeerkat.registerPushDevice).toHaveBeenLastCalledWith(
+        expect.objectContaining({ deviceToken: 'apns-token', sessionToken: 'tok_xyz' })
+      );
+    });
+
+    it('does not re-bind on sign-in when the app never registered', async () => {
+      const { mockMeerkat, mockAuthAgent } = await setupPush();
+      mockAuthAgent.verifyOtp.mockResolvedValue(OK_VERIFY);
+      await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '123456' });
+
+      expect(mockMeerkat.registerPushDevice).not.toHaveBeenCalled();
+    });
+
+    it('unbinds the device on logout', async () => {
+      const { mockMeerkat, mockAuthAgent } = await setupPush();
+      mockAuthAgent.verifyOtp.mockResolvedValue(OK_VERIFY);
+      await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '123456' });
+      await sideKit.registerForPush('apns-token');
+
+      await sideKit.logout();
+      expect(mockMeerkat.unregisterPushDevice).toHaveBeenCalledWith('apns-token');
+    });
+
+    it('does not unbind on logout when the app never registered', async () => {
+      const { mockMeerkat, mockAuthAgent } = await setupPush();
+      mockAuthAgent.verifyOtp.mockResolvedValue(OK_VERIFY);
+      await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '123456' });
+
+      await sideKit.logout();
+      expect(mockMeerkat.unregisterPushDevice).not.toHaveBeenCalled();
     });
   });
 

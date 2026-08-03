@@ -34,9 +34,9 @@ function buildIdentifier(channel: AuthChannel, identifier: string) {
  * AuthAgent class
  */
 export class AuthAgent {
-  private apiKey: string;
+  private apiKey: string | null;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string | null = null) {
     this.apiKey = apiKey;
   }
 
@@ -105,11 +105,20 @@ export class AuthAgent {
     body: unknown,
     token?: string
   ): Promise<AuthResult<T>> {
+    // Constructed unconfigured until SideKit.configure() supplies the key; failing
+    // here covers every auth call with one clear error.
+    const apiKey = this.apiKey;
+    if (!apiKey) {
+      error(
+        'SideKit is not configured — call SideKit.shared.configure(apiKey) first'
+      );
+      return { ok: false, error: 'not_configured', status: 0 };
+    }
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'API-Key': this.apiKey,
+        'API-Key': apiKey,
       };
       if (token) {
         headers.Authorization = `Bearer ${token}`;
