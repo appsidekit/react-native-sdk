@@ -145,6 +145,22 @@ export interface FeatureFlag {
  * SideKit state and methods exposed via useSideKit hook
  */
 export interface SideKitState {
+  /**
+   * Whether the SDK has finished starting up. It is false for the first moments of a
+   * launch, while `configure()` loads persisted state, and `authUser` is null for that
+   * whole window whether or not anyone is signed in. Gate anything that treats a null
+   * `authUser` as a sign-out (rotating an analytics id, routing to a login screen) on
+   * this being true.
+   *
+   * @example
+   * ```typescript
+   * const { isConfigured, authUser } = useSideKit();
+   * if (!isConfigured) return <Splash />;
+   * return authUser ? <Home /> : <SignIn />;
+   * ```
+   */
+  isConfigured: boolean;
+
   /** Whether to show update screen */
   showUpdateScreen: boolean;
 

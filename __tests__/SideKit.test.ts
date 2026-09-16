@@ -923,6 +923,22 @@ describe('SideKit', () => {
       expect(sideKit.isAuthenticated).toBe(false);
     });
 
+    it('is not configured until the persisted session has been restored', async () => {
+      expect(sideKit.isConfigured).toBe(false);
+
+      const seen: Array<{ isConfigured: boolean; authUser: unknown }> = [];
+      sideKit.subscribe(() =>
+        seen.push({ isConfigured: sideKit.isConfigured, authUser: sideKit.authUser })
+      );
+
+      await setupAuth({ storedSession: { token: 'tok_old', user, expiresAt: 9999999999 } });
+
+      expect(sideKit.isConfigured).toBe(true);
+      // The first notification already carries the restored user, so a subscriber is
+      // never told the SDK is ready while it still looks signed out.
+      expect(seen[0]).toEqual({ isConfigured: true, authUser: user });
+    });
+
     it('restores a valid persisted session on configure', async () => {
       await setupAuth({ storedSession: { token: 'tok_old', user, expiresAt: 9999999999 } });
       expect(sideKit.isAuthenticated).toBe(true);

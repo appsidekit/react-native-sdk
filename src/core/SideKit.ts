@@ -32,7 +32,7 @@ export class SideKit {
   private static instance: SideKit;
 
   // Configuration
-  private isConfigured = false;
+  private _isConfigured = false;
 
   // Dependencies. Always present — constructed unconfigured (no API key) and
   // replaced by configure(), so call sites never null-check them. A call that
@@ -83,13 +83,22 @@ export class SideKit {
   }
 
   /**
+   * Whether configure() has finished loading persisted state. Until it has, `authUser`
+   * is null because nothing has been restored yet, which is indistinguishable from being
+   * signed out — consumers that act on signed-out state must wait for this.
+   */
+  get isConfigured(): boolean {
+    return this._isConfigured;
+  }
+
+  /**
    * Configure the SideKit SDK with your API key and options.
    *
    * This method must be called before using any other SDK features. It initializes
    * the SDK, loads cached settings, checks version compliance, and sets up lifecycle tracking.
    */
   async configure(apiKey: string, options?: ConfigOptions): Promise<void> {
-    if (this.isConfigured) {
+    if (this._isConfigured) {
       log('SDK already configured, reconfiguring...');
       this.cleanup();
     }
@@ -129,8 +138,10 @@ export class SideKit {
       () => this.handleBackground()
     );
 
-    // Mark as configured
-    this.isConfigured = true;
+    // Configured once persisted state is loaded: auth state is now truthful, so tell
+    // subscribers before the network calls below.
+    this._isConfigured = true;
+    this.notifyListeners();
 
     // Send first launch signal after configuration is complete
     if (isFirstLaunch) {
@@ -163,7 +174,7 @@ export class SideKit {
    * Send custom analytics events.
    */
   sendSignals(signals: Array<{ key: string; value?: string }>): void {
-    if (!this.isConfigured) {
+    if (!this._isConfigured) {
       error('SDK not configured. Call configure() first.');
       return;
     }
@@ -220,7 +231,7 @@ export class SideKit {
    * Enable or disable analytics tracking
    */
   set isAnalyticsEnabled(enabled: boolean) {
-    if (!this.isConfigured) {
+    if (!this._isConfigured) {
       error('SDK not configured. Call configure() first.');
       return;
     }
@@ -278,7 +289,7 @@ export class SideKit {
   async refreshFlags(): Promise<void> {
     // Guarded here (not just in Meerkat) so an early call can't populate flags
     // from a stale cache before configure() has run.
-    if (!this.isConfigured) {
+    if (!this._isConfigured) {
       error('SDK not configured. Call configure() first.');
       return;
     }
@@ -344,7 +355,7 @@ export class SideKit {
     this._pushToken = deviceToken;
     this._pushEnvironment = options?.environment ?? (await getApnsEnvironment());
 
-    if (!this.isConfigured) {
+    if (!this._isConfigured) {
       log('registerForPush called before configure() — deferred until configuration completes');
       this._pushRegistrationPending = true;
       return true;
@@ -582,7 +593,7 @@ export class SideKit {
    * Handle app foreground event
    */
   private handleForeground(): void {
-    if (!this.isConfigured) {
+    if (!this._isConfigured) {
       return;
     }
 
@@ -597,7 +608,7 @@ export class SideKit {
    * Handle app background event
    */
   private handleBackground(): void {
-    if (!this.isConfigured) {
+    if (!this._isConfigured) {
       return;
     }
 
@@ -700,7 +711,7 @@ export class SideKit {
    * Manually dismiss the update gate (for dismissible gates)
    */
   dismissUpdateGate(): void {
-    if (!this.isConfigured) {
+    if (!this._isConfigured) {
       error('SDK not configured');
       return;
     }
@@ -737,7 +748,7 @@ export class SideKit {
    */
   reset(): void {
     this.cleanup();
-    this.isConfigured = false;
+    this._isConfigured = false;
     this.settingsStore = new SettingsStore();
     this.meerkat = new Meerkat();
     this.authAgent = new AuthAgent();

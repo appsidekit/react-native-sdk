@@ -6,6 +6,7 @@ import { SideKit } from '../src/core/SideKit';
 jest.mock('../src/core/SideKit', () => ({
   SideKit: {
     shared: {
+      isConfigured: true,
       showUpdateScreen: false,
       gateInformation: null,
       isAnalyticsEnabled: true,
@@ -84,6 +85,14 @@ describe('useSideKit', () => {
       expect(SideKit.shared.sendSignals).toHaveBeenCalledWith([
         { key: 'test_event', value: 'test' },
       ]);
+    });
+  });
+
+  describe('state', () => {
+    it('should expose isConfigured from the SDK', () => {
+      const { result } = renderHook(() => useSideKit());
+
+      expect(result.current.isConfigured).toBe(true);
     });
   });
 

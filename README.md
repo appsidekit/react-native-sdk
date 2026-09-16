@@ -140,6 +140,7 @@ SideKit currently supports phone as the only sign-in channel. `signIn` sends a o
 
 ```ts
 const {
+  isConfigured,
   isAuthenticated,
   authUser,
   sessionToken,
@@ -180,6 +181,13 @@ await logout();
 ```
 
 Every auth call returns an `AuthResult<T>`: either `{ ok: true, data }` or `{ ok: false, error, status, retryAfter? }`, where `error` is a short code you can branch on (e.g. `"invalid_code"`, `"rate_limited"`, `"handle_taken"`, `"network_error"`).
+
+**Waiting for the restore:** a persisted session is read from storage during `configure()`, so for the first moments of a launch `authUser` is null and `isAuthenticated` is false even for a signed-in user. `isConfigured` tells the two apart: it turns true the moment the restore is done. Gate anything that reacts to a signed-out user on it.
+
+```ts
+if (!isConfigured) return <Splash />;   // still restoring
+return isAuthenticated ? <Home /> : <SignIn />;
+```
 
 **Session storage:** the session token is stored in the platform **Keychain/Keystore** via `expo-secure-store` — no setup required. Non-secret SDK state (analytics flag, cached gate) stays in AsyncStorage.
 

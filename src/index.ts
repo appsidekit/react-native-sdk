@@ -21,6 +21,7 @@ export { SideKitProvider, type SideKitProviderProps } from './components';
  * subscribes to state changes and provides methods for interacting with the SDK.
  *
  * @returns {SideKitState} Current SideKit state and methods:
+ *   - isConfigured: Whether the SDK has finished starting up
  *   - showUpdateScreen: Whether the update screen should be shown
  *   - gateInformation: Current gate configuration from the API
  *   - isAnalyticsEnabled: Whether analytics tracking is enabled
@@ -64,6 +65,7 @@ export { SideKitProvider, type SideKitProviderProps } from './components';
  */
 export function useSideKit(): SideKitState {
   const [state, setState] = useState({
+    isConfigured: SideKit.shared.isConfigured,
     showUpdateScreen: SideKit.shared.showUpdateScreen,
     gateInformation: SideKit.shared.gateInformation,
     isAnalyticsEnabled: SideKit.shared.isAnalyticsEnabled,
@@ -77,6 +79,7 @@ export function useSideKit(): SideKitState {
     // Subscribe to SDK state changes
     const unsubscribe = SideKit.shared.subscribe(() => {
       setState({
+        isConfigured: SideKit.shared.isConfigured,
         showUpdateScreen: SideKit.shared.showUpdateScreen,
         gateInformation: SideKit.shared.gateInformation,
         isAnalyticsEnabled: SideKit.shared.isAnalyticsEnabled,
