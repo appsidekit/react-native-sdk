@@ -80,18 +80,19 @@ export interface AuthUser {
 
 /**
  * Result of an auth call. On success, `data` holds the payload; on failure, `error` is
- * the short code surfaced by the API (e.g. 'invalid_code', 'rate_limited',
- * 'handle_taken', 'network_error') alongside the HTTP `status` and, for rate limits,
- * `retryAfter` in seconds.
+ * the short code surfaced by the API (e.g. 'invalid_code', 'expired',
+ * 'too_many_attempts', 'rate_limited', 'invalid_email', 'handle_taken', 'network_error')
+ * alongside the HTTP `status` and, for rate limits, `retryAfter` in seconds.
  */
 export type AuthResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string; status: number; retryAfter?: number };
 
 /**
- * The channel an OTP identifier is delivered over. `phone` (SMS) is the only signup/login
- * channel today; `email` is reserved for apps that make email their primary channel, and
- * for adding a secondary channel to an existing account.
+ * The channel an OTP is delivered over: `phone` (SMS, E.164 number, code valid 5 min) or
+ * `email` (6-digit code, valid 10 min). Both sign up new users and sign in existing ones.
+ * Phone and email are separate identities: an email sign-in reaches only an account that
+ * signed up with that email, never one that merely set it via `setEmail`.
  */
 export type AuthChannel = 'phone' | 'email';
 
@@ -184,7 +185,7 @@ export interface SideKitState {
    * Start signing a user in: send a one-time passcode to an identifier on the given
    * channel, then complete with `verifyOtp`. Passwordless, so the same call signs up a
    * new user and signs in an existing one. Defaults to 'phone' (E.164, e.g.
-   * "+15555550100"); pass `{ channel: 'email' }` for an email.
+   * "+15555550100"); pass `{ channel: 'email' }` to email a 6-digit code instead.
    *
    * @example
    * ```typescript
@@ -221,6 +222,14 @@ export interface SideKitState {
 
   /** Set the signed-in user's handle. Returns 'handle_taken' on conflict. */
   setHandle: (handle: string) => Promise<AuthResult<{ handle: string }>>;
+
+  /**
+   * Attach a recovery email to the signed-in user. Stored unverified — it does NOT
+   * enable email sign-in to this account. Fails with 'email_taken' (another account
+   * signed up with it), 'login_email_locked' (the user signed up with email, which can't
+   * be changed), or 'invalid_email'.
+   */
+  setEmail: (email: string) => Promise<AuthResult<{ email: string }>>;
 
   /**
    * Resolve a handle to its user within this app — `{ id, handle, createdAt }` — for

@@ -6,6 +6,8 @@ global.fetch = jest.fn();
 const PHONE = '+15555550100';
 // The wire identifier the agent builds from a phone string.
 const PHONE_ID = { channel: 'phone', phone: PHONE };
+const EMAIL = 'player@example.com';
+const EMAIL_ID = { channel: 'email', email: EMAIL };
 
 /** Build a fake Response with a JSON body and 2xx status. */
 function okJson(body: unknown) {
@@ -80,6 +82,80 @@ describe('AuthAgent', () => {
           body: JSON.stringify({ identifier: PHONE_ID, inviteCode: 'INVITE123' }),
         })
       );
+    });
+  });
+
+  describe('email channel', () => {
+    it('signIn sends an email identifier under the email key', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        okJson({ requestId: 'otp_e', expiresAt: 600 })
+      );
+
+      const res = await agent.signIn('email', EMAIL);
+
+      expect(res).toEqual({ ok: true, data: { requestId: 'otp_e', expiresAt: 600 } });
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.appsidekit.com/v1/auth/otp/send',
+        expect.objectContaining({
+          body: JSON.stringify({ identifier: EMAIL_ID, inviteCode: undefined }),
+        })
+      );
+    });
+
+    it('verifyOtp sends the same email identifier back', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        okJson({ sessionToken: 'tok_e', expiresAt: 1, user: { id: 'u_1', handle: null, createdAt: 1 }, newUser: true })
+      );
+
+      await agent.verifyOtp({ requestId: 'otp_e', channel: 'email', identifier: EMAIL, code: '123456' });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.appsidekit.com/v1/auth/otp/verify',
+        expect.objectContaining({
+          body: JSON.stringify({ requestId: 'otp_e', identifier: EMAIL_ID, code: '123456' }),
+        })
+      );
+    });
+
+    it('surfaces email delivery failures by code', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(errText(400, 'invalid_email'));
+      expect(await agent.signIn('email', 'bad@x')).toEqual({
+        ok: false,
+        error: 'invalid_email',
+        status: 400,
+        retryAfter: undefined,
+      });
+    });
+  });
+
+  describe('setEmail', () => {
+    it('PUTs the email with the Bearer token', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(okJson({ email: EMAIL }));
+
+      const res = await agent.setEmail('tok_123', EMAIL);
+
+      expect(res).toEqual({ ok: true, data: { email: EMAIL } });
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.appsidekit.com/v1/auth/email',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'API-Key': 'test-api-key',
+            Authorization: 'Bearer tok_123',
+          }),
+          body: JSON.stringify({ email: EMAIL }),
+        })
+      );
+    });
+
+    it.each(['email_taken', 'login_email_locked'])('maps a 409 to %s', async (code) => {
+      (global.fetch as jest.Mock).mockResolvedValue(errText(409, code));
+      expect(await agent.setEmail('tok_123', EMAIL)).toEqual({
+        ok: false,
+        error: code,
+        status: 409,
+        retryAfter: undefined,
+      });
     });
   });
 

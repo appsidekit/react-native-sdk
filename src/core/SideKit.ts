@@ -412,9 +412,10 @@ export class SideKit {
 
   /**
    * Start signing a user in: send a one-time passcode to an identifier on the given
-   * channel (defaults to 'phone', E.164), then complete with verifyOtp. Passwordless, so
-   * the same call signs up a new user and signs in an existing one. Returns the requestId
-   * to pass to verifyOtp, or an error code ('rate_limited', 'invalid_phone', etc.).
+   * channel, then complete with verifyOtp. `channel` defaults to 'phone' (E.164); pass
+   * 'email' to email a 6-digit code instead. Passwordless, so the same call signs up a new
+   * user and signs in an existing one. Returns the requestId to pass to verifyOtp, or an
+   * error code ('rate_limited', 'invalid_identifier', 'invalid_phone', 'invalid_email', etc.).
    */
   async signIn(
     identifier: string,
@@ -472,6 +473,22 @@ export class SideKit {
       this.notifyListeners();
     }
     return result;
+  }
+
+  /**
+   * Attach a recovery email to the signed-in user. It's stored unverified, so it does NOT
+   * let them sign in by email to this account — an email sign-in only reaches an account
+   * that signed up with that email. Read-only for local state (AuthUser has no email).
+   * Fails with 'email_taken' (another account signed up with it), 'login_email_locked'
+   * (the user signed up with email, which can't be changed here), 'invalid_email', or
+   * 'unauthorized' if signed out.
+   */
+  async setEmail(email: string): Promise<AuthResult<{ email: string }>> {
+    if (!this._sessionToken) {
+      return { ok: false, error: 'unauthorized', status: 401 };
+    }
+
+    return this.authAgent.setEmail(this._sessionToken, email);
   }
 
   /**

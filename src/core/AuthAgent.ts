@@ -1,7 +1,7 @@
 /**
  * AuthAgent - HTTP client for SideKit end-user auth (/v1/auth/*)
  *
- * Handles the phone -> OTP -> session flow plus handle/email/logout. Unlike
+ * Handles the phone|email -> OTP -> session flow plus handle/email/logout. Unlike
  * Meerkat (fire-and-forget), every call returns an AuthResult so the UI can
  * branch on success vs. the error code the API surfaces (e.g. 'invalid_code',
  * 'rate_limited', 'handle_taken').
@@ -72,6 +72,18 @@ export class AuthAgent {
     handle: string
   ): Promise<AuthResult<{ handle: string }>> {
     return this.call('PUT', '/handle', { handle }, token);
+  }
+
+  /**
+   * PUT /v1/auth/email — attach a recovery email to the signed-in user (Bearer). Stored
+   * unverified, so it does NOT let the user sign in by email to this account. Fails with
+   * 'email_taken' or 'login_email_locked' (409) — see SideKit.setEmail.
+   */
+  setEmail(
+    token: string,
+    email: string
+  ): Promise<AuthResult<{ email: string }>> {
+    return this.call('PUT', '/email', { email }, token);
   }
 
   /** POST /v1/auth/logout — revoke the session (Bearer). Idempotent. */

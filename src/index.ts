@@ -156,6 +156,11 @@ export function useSideKit(): SideKitState {
     []
   );
 
+  const setEmail = useCallback(
+    (email: string) => SideKit.shared.setEmail(email),
+    []
+  );
+
   const lookupHandle = useCallback(
     (handle: string) => SideKit.shared.lookupHandle(handle),
     []
@@ -184,6 +189,7 @@ export function useSideKit(): SideKitState {
     signIn,
     verifyOtp,
     setHandle,
+    setEmail,
     lookupHandle,
     logout,
     registerForPush,

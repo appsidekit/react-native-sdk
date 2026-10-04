@@ -867,6 +867,7 @@ describe('SideKit', () => {
         signIn: jest.fn(),
         verifyOtp: jest.fn(),
         setHandle: jest.fn(),
+        setEmail: jest.fn(),
         logout: jest.fn().mockResolvedValue({ ok: true, data: {} }),
         ...overrides?.authAgent,
       };
@@ -976,6 +977,60 @@ describe('SideKit', () => {
       const res = await sideKit.setHandle('neo');
       expect(res).toEqual({ ok: false, error: 'unauthorized', status: 401 });
       expect(mockAuthAgent.setHandle).not.toHaveBeenCalled();
+    });
+
+    it('signIn and verifyOtp pass the email channel through', async () => {
+      const { mockAuthAgent } = await setupAuth({
+        authAgent: {
+          signIn: jest.fn().mockResolvedValue({ ok: true, data: { requestId: 'otp_e', expiresAt: 600 } }),
+          verifyOtp: jest
+            .fn()
+            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_e', expiresAt: 9999, user, newUser: true } }),
+        },
+      });
+
+      await sideKit.signIn('a@example.com', { channel: 'email' });
+      expect(mockAuthAgent.signIn).toHaveBeenCalledWith('email', 'a@example.com', undefined);
+
+      const res = await sideKit.verifyOtp({
+        requestId: 'otp_e',
+        identifier: 'a@example.com',
+        channel: 'email',
+        code: '123456',
+      });
+      expect(res.ok).toBe(true);
+      expect(mockAuthAgent.verifyOtp).toHaveBeenCalledWith({
+        requestId: 'otp_e',
+        channel: 'email',
+        identifier: 'a@example.com',
+        code: '123456',
+      });
+      expect(sideKit.isAuthenticated).toBe(true);
+    });
+
+    it('setEmail sends the session token and leaves the local user untouched', async () => {
+      const { mockAuthAgent } = await setupAuth({
+        authAgent: {
+          verifyOtp: jest
+            .fn()
+            .mockResolvedValue({ ok: true, data: { sessionToken: 'tok_xyz', expiresAt: 9999, user, newUser: true } }),
+          setEmail: jest.fn().mockResolvedValue({ ok: true, data: { email: 'a@example.com' } }),
+        },
+      });
+      await sideKit.verifyOtp({ requestId: 'otp_1', identifier: PHONE, code: '123456' });
+
+      const res = await sideKit.setEmail('A@Example.com');
+
+      expect(res).toEqual({ ok: true, data: { email: 'a@example.com' } });
+      expect(mockAuthAgent.setEmail).toHaveBeenCalledWith('tok_xyz', 'A@Example.com');
+      expect(sideKit.authUser).toEqual(user);
+    });
+
+    it('setEmail returns unauthorized when signed out', async () => {
+      const { mockAuthAgent } = await setupAuth();
+      const res = await sideKit.setEmail('a@example.com');
+      expect(res).toEqual({ ok: false, error: 'unauthorized', status: 401 });
+      expect(mockAuthAgent.setEmail).not.toHaveBeenCalled();
     });
 
     it('logout revokes server-side and clears local state', async () => {

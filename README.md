@@ -15,7 +15,7 @@ SideKit is a lightweight React Native SDK that provides seamless version gating 
 - **Analytics Signals**: Send custom events (signals) to track user behavior and app health.
 - **Feature Flags & Config**: Remotely toggle features and push config values without shipping an update.
 - **User Feedback**: Collect in-app feedback with automatic device/locale metadata.
-- **End-User Auth**: Sign users in with a phone number + OTP; sessions persist across launches.
+- **End-User Auth**: Sign users in with a phone number or email + one-time code; sessions persist across launches.
 - **Automatic Presentation**: Out-of-the-box UI for update prompts that works for both iOS and Android.
 - **Built for Expo**: First-class Expo support (uses Expo modules for device info and secure storage)
 
@@ -136,7 +136,7 @@ if (ok) showThankYou();
 
 ### 7. End-User Authentication
 
-SideKit currently supports phone as the only sign-in channel. `signIn` sends a one-time passcode (OTP); verifying it creates an account if the user doesn't already have one, otherwise signs them in. The session is persisted across app launches, so a returning user stays signed in. Requires your app to be enabled for end-user auth.
+Users sign in with a **phone number** (SMS code, valid 5 minutes) or an **email address** (6-digit code, valid 10 minutes). `signIn` sends a one-time passcode (OTP); verifying it creates an account if the user doesn't already have one, otherwise signs them in. The session is persisted across app launches, so a returning user stays signed in. Requires your app to be enabled for end-user auth.
 
 ```ts
 const {
@@ -147,6 +147,7 @@ const {
   signIn,
   verifyOtp,
   setHandle,
+  setEmail,
   logout,
 } = useSideKit();
 
@@ -180,7 +181,35 @@ await setHandle("neo");              // -> { ok:false, error:"handle_taken" } on
 await logout();
 ```
 
-Every auth call returns an `AuthResult<T>`: either `{ ok: true, data }` or `{ ok: false, error, status, retryAfter? }`, where `error` is a short code you can branch on (e.g. `"invalid_code"`, `"rate_limited"`, `"handle_taken"`, `"network_error"`).
+**Email sign-in** is the same two calls with `channel: "email"`. Pass the same identifier and channel to both:
+
+```ts
+const send = await signIn("player@example.com", { channel: "email" });
+if (send.ok) {
+  const verify = await verifyOtp({
+    requestId: send.data.requestId,
+    identifier: "player@example.com",
+    channel: "email",
+    code: "123456",
+  });
+}
+```
+
+Phone and email are **separate identities**. A user who signed up with a phone and later signs in with an email gets a different account. `setEmail` attaches a *recovery* email to the signed-in user. It's stored unverified and does **not** let them sign in by email to that account.
+
+```ts
+await setEmail("player@example.com"); // -> "email_taken" | "login_email_locked" | "invalid_email" on failure
+```
+
+Every auth call returns an `AuthResult<T>`: either `{ ok: true, data }` or `{ ok: false, error, status, retryAfter? }`, where `error` is a short code you can branch on:
+
+| Call | Error codes |
+|---|---|
+| `signIn` | `invalid_identifier` (malformed phone/email), `invalid_phone`, `invalid_email` (undeliverable), `rate_limited` (with `retryAfter`), `sms_failed` / `email_failed` |
+| `verifyOtp` | `invalid_code`, `expired`, `too_many_attempts` (request a new code later), `already_used`, `invalid_request` |
+| `setHandle` | `handle_taken`, `handle_unavailable` (reserved/blocked) |
+| `setEmail` | `invalid_email`, `email_taken`, `login_email_locked` (the user signed up with email) |
+| any | `network_error`, `not_configured`, `unauthorized` |
 
 **Waiting for the restore:** a persisted session is read from storage during `configure()`, so for the first moments of a launch `authUser` is null and `isAuthenticated` is false even for a signed-in user. `isConfigured` tells the two apart: it turns true the moment the restore is done. Gate anything that reacts to a signed-out user on it.
 
